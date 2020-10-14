@@ -56,11 +56,11 @@ def visualize(epoch):
         fig.show()
 
 
-model = SimpleAutoEncoder(input_size=28 * 28, hidden_size=1024, encoded_size=20).to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-5)
+model = SimpleAutoEncoder(input_size=28 * 28, hidden_size=1024, encoded_size=100).to(device)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
-epochs = 1000
+epochs = 100
 for epoch in range(epochs):
     loss = 0
     for batch_features, _ in train_loader:
@@ -94,3 +94,4 @@ for epoch in range(epochs):
     print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
     if epoch % (epochs / 10) == 0:
         visualize(epoch + 1)
+visualize(epochs - 1)
