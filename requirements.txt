@@ -1,5 +1,6 @@
-torch~=1.4.0
-torchvision~=0.5.0
-matplotlib~=3.2.1
-numpy~=1.18.2
-fairmotion~=0.0.4
+fairmotion==0.0.4
+smplx==0.1.16 # fairmotion requires 0.1.16
+torch==1.4.0 # fairmotion requires 1.4.0
+torchvision==0.5.0 # torch 1.4.0 requires 0.5.0
+matplotlib~=3.3.2
+numpy~=1.19.3
