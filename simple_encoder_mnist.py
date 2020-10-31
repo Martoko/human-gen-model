@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import matplotlib.pyplot as plt
-import numpy as np
 
 from simple_encoder import SimpleAutoEncoder
 

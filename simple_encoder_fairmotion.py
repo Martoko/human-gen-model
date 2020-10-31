@@ -12,25 +12,28 @@ from fairmotion.ops import motion as motion_ops
 from fairmotion.tasks.motion_prediction import utils
 from fairmotion.utils import utils as fairmotion_utils
 from human_body_prior.body_model.body_model import BodyModel
+from torch.utils.data import DataLoader
+
 import motion_data
+from motion_dataset import MotionDataset
 
-motion = motion_data.load("data/motions/CMU/01/01_01_poses.npz")
+train_dataset = MotionDataset(motion_data.load("data/motions/CMU/01/01_01_poses.npz"))
+train_loader = DataLoader(
+    train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True
+)
 
-len(motion.rotations())  # 2751 framecount
-motion.num_frames()  # 2751 framecount
+generated_motion = Motion(name=train_dataset.motion.name, skel=train_dataset.motion.skel, fps=train_dataset.motion.fps)
 
-len(motion.rotations()[0])  # 22 joint count
-len(motion.skel.joints)  # 22 joint count
-len(motion.rotations()[0][0])  # 3x3 matrix of rotation
+pose: torch.Tensor
+for flattened_pose_matrix_batch in train_loader:
+    # we get a batch of 4x4 transform matrix for each joint
 
-generated_motion = Motion(name=motion.name, skel=motion.skel, fps=motion.fps)
-
-pose: Pose
-for pose in motion.poses:
-    pose_matrix = pose.to_matrix()
-
+    input = flattened_pose_matrix_batch
     # manipulate pose matrix here
+    output = flattened_pose_matrix_batch
 
-    generated_motion.add_one_frame(t=None, pose_data=pose_matrix)
+    flattened_pose_matrix_batch: torch.Tensor
+    for flattened_pose_matrix in output:
+        generated_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)))
 
 motion_data.save(generated_motion, f"data/generated/{generated_motion.name}.bvh")
