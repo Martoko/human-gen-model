@@ -7,18 +7,30 @@ import numpy as np
 from fairmotion.data import bvh
 from fairmotion.data import amass_dip
 from fairmotion.data import amass
+from fairmotion.core.motion import Motion, Pose
 from fairmotion.ops import motion as motion_ops
 from fairmotion.tasks.motion_prediction import utils
 from fairmotion.utils import utils as fairmotion_utils
 from human_body_prior.body_model.body_model import BodyModel
+import motion_data
 
-NEUTRAL_BODY_MODEL_PATH = "data/body-models/smplh/neutral/model.npz"
-FEMALE_BODY_MODEL_PATH = "data/body-models/smplh/female/model.npz"
-MALE_BODY_MODEL_PATH = "data/body-models/smplh/male/model.npz"
+motion = motion_data.load("data/motions/CMU/01/01_01_poses.npz")
 
-NEUTRAL_BODY_MODEL = BodyModel(model_type="smplh", bm_path=NEUTRAL_BODY_MODEL_PATH, num_betas=10)
-FEMALE_BODY_MODEL = BodyModel(model_type="smplh", bm_path=FEMALE_BODY_MODEL_PATH, num_betas=10)
-MALE_BODY_MODEL = BodyModel(model_type="smplh", bm_path=MALE_BODY_MODEL_PATH, num_betas=10)
+len(motion.rotations())  # 2751 framecount
+motion.num_frames()  # 2751 framecount
 
-motion = amass.load("data/motions/CMU/01/01_01_poses.npz", bm=FEMALE_BODY_MODEL)
-bvh.save(motion, "data/generated/01_01_poses.bvh")
+len(motion.rotations()[0])  # 22 joint count
+len(motion.skel.joints)  # 22 joint count
+len(motion.rotations()[0][0])  # 3x3 matrix of rotation
+
+generated_motion = Motion(name=motion.name, skel=motion.skel, fps=motion.fps)
+
+pose: Pose
+for pose in motion.poses:
+    pose_matrix = pose.to_matrix()
+
+    # manipulate pose matrix here
+
+    generated_motion.add_one_frame(t=None, pose_data=pose_matrix)
+
+motion_data.save(generated_motion, f"data/generated/{generated_motion.name}.bvh")
