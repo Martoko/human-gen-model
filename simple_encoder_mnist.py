@@ -11,16 +11,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
-train_dataset = torchvision.datasets.MNIST(
+train_dataset = torchvision.datasets.FashionMNIST(
     root="~/torch_datasets", train=True, transform=transform, download=True
 )
 
-test_dataset = torchvision.datasets.MNIST(
+test_dataset = torchvision.datasets.FashionMNIST(
     root="~/torch_datasets", train=False, transform=transform, download=True
 )
 
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=128, shuffle=True, num_workers=4, pin_memory=True
+    train_dataset, batch_size=8, shuffle=True, num_workers=4, pin_memory=True
 )
 
 test_loader = torch.utils.data.DataLoader(
@@ -60,7 +60,9 @@ model = SimpleAutoEncoder(input_size=28 * 28, hidden_size=1024, encoded_size=100
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
-epochs = 100
+# TODO: save best model
+
+epochs = 10
 for epoch in range(epochs):
     loss = 0
     for batch_features, _ in train_loader:
