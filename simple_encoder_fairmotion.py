@@ -16,24 +16,76 @@ from torch.utils.data import DataLoader
 
 import motion_data
 from motion_dataset import MotionDataset
+from simple_encoder import SimpleAutoEncoder
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 train_dataset = MotionDataset(motion_data.load("data/motions/CMU/01/01_01_poses.npz"))
 train_loader = DataLoader(
     train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True
 )
 
-generated_motion = Motion(name=train_dataset.motion.name, skel=train_dataset.motion.skel, fps=train_dataset.motion.fps)
+test_dataset = MotionDataset(motion_data.load("data/motions/CMU/01/01_02_poses.npz"))
+test_loader = DataLoader(
+    test_dataset, batch_size=32, num_workers=4, pin_memory=True
+)
 
-pose: torch.Tensor
-for flattened_pose_matrix_batch in train_loader:
-    # we get a batch of 4x4 transform matrix for each joint
+model = SimpleAutoEncoder(input_size=352, hidden_size=1024, encoded_size=100).double().to(device)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.MSELoss()
 
-    input = flattened_pose_matrix_batch
-    # manipulate pose matrix here
-    output = flattened_pose_matrix_batch
-
+epochs = 10
+for epoch in range(epochs):
+    loss = 0
     flattened_pose_matrix_batch: torch.Tensor
-    for flattened_pose_matrix in output:
-        generated_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)))
+    for flattened_pose_matrix_batch in train_loader:
+        # reshape mini-batch data to [N, 784] matrix
+        # load it to the active device
+        # batch_features = batch_features.view(-1, 28 * 28).to(device)
+        flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
 
-motion_data.save(generated_motion, f"data/generated/{generated_motion.name}.bvh")
+        # reset the gradients back to zero
+        # PyTorch accumulates gradients on subsequent backward passes
+        optimizer.zero_grad()
+
+        # compute reconstructions
+        outputs = model(flattened_pose_matrix_batch)
+
+        # compute training reconstruction loss
+        train_loss = criterion(outputs, flattened_pose_matrix_batch)
+
+        # compute accumulated gradients
+        train_loss.backward()
+
+        # perform parameter update based on current gradients
+        optimizer.step()
+
+        # add the mini-batch training loss to epoch loss
+        loss += train_loss.item()
+
+    # compute the epoch training loss
+    loss = loss / len(train_loader)
+
+    # display the epoch training loss
+    print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
+
+# Visualize results on untrained data
+original_motion = Motion(name=test_dataset.motion.name, skel=test_dataset.motion.skel, fps=test_dataset.motion.fps)
+autoencoded_motion = Motion(name=test_dataset.motion.name, skel=test_dataset.motion.skel, fps=test_dataset.motion.fps)
+
+with torch.no_grad():
+    flattened_pose_matrix_batch: torch.Tensor
+    for flattened_pose_matrix_batch in test_loader:
+        # we get a batch of 4x4 transform matrix for each joint
+
+        input = flattened_pose_matrix_batch.to(device)
+        output = model(input)
+
+        flattened_pose_matrix_batch: torch.Tensor
+        for flattened_pose_matrix in output:
+            autoencoded_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+        for flattened_pose_matrix in flattened_pose_matrix_batch:
+            original_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+
+motion_data.save(original_motion, f"data/generated/{autoencoded_motion.name}.orig.bvh")
+motion_data.save(autoencoded_motion, f"data/generated/{autoencoded_motion.name}.auto.bvh")
