@@ -91,6 +91,7 @@ for epoch in range(epochs):
     # compute the epoch training loss
     loss = loss / len(train_loader)
 
+    # TODO: test loss/train loss graph
     # display the epoch training loss
     print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
     if epoch % (epochs / 10) == 0:
