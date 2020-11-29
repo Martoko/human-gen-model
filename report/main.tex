@@ -1,0 +1,83 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{mathtools}
+\usepackage{graphicx,caption}
+\usepackage{listings}
+\usepackage[margin=1.2in]{geometry}
+
+\usepackage{titling}
+\usepackage{lipsum}
+
+\usepackage{parskip}
+
+\usepackage{url}
+
+\usepackage[
+    style=authoryear-icomp,
+    maxbibnames=9,
+    maxcitenames=2,
+    backend=biber
+]{biblatex}
+\addbibresource{main.bib}
+
+\setlength{\jot}{10pt}
+
+\allowdisplaybreaks[1]
+
+% Expectation symbol
+\DeclareMathOperator*{\E}{\mathbb{E}}
+
+% Math functions
+\DeclareMathOperator{\Span}{span}
+
+% Conditional
+\newcommand\given[1][]{\:#1\vert\:}
+
+% argmax
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\softmax}{soft\,max}
+
+\title{%
+    Generative Model of Human Body Motion for Walking\\
+    \large Research Project\\
+    \small KIREPRO1PE
+}
+
+\author{%
+    Mathias Bastholm\\
+    \texttt{mbas@itu.dk}
+}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}\label{sec:introduction}
+short intro to the project
+
+\section{Background}\label{sec:background}
+a chance to write a bit about what i learned from my lit study
+
+\section{Method}\label{sec:method}
+\subsection{Models}\label{subsec:models}
+detailed description of my models what makes them unqiue how they work, etc
+\subsection{Training}\label{subsec:training}
+notes on how the training was performed
+
+\section{Results and analysis}\label{sec:analysis}
+a section presenting my results and comparing them to other results, might have to create some "artificial" results
+to get anything good to compare with, like using linear interpolation as a baseline, and final ik as "competing"
+solution, this is also a good place to show some concrete examples of what my models can do, using images
+
+\subsection{Further research and improvements}\label{subsec:furtherresearch}
+as with all papers that are things that i did not get to explore, this will detail where i think further energy should
+be exerted based on my findings.
+
+\section{Conclusion}\label{sec:conclusion}
+
+\newpage
+
+\printbibliography%
+
+\end{document}
+
