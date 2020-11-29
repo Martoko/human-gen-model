@@ -19,7 +19,7 @@ class SimpleAutoEncoder(nn.Module):
 
     def decode(self, x):
         x = F.gelu(self.decoder_hidden(x))
-        x = torch.sigmoid(self.decoder_output(x))  # this means that our model only works for normalized data
+        x = F.relu(self.decoder_output(x))
         # x = self.decoder_output(x)  # kinda works for non-normalized input (although normalizing input is best)
         return x
 
