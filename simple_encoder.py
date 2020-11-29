@@ -1,9 +1,9 @@
+import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class SimpleAutoEncoder(nn.Module):
-    # TODO: activations?
-
     def __init__(self, input_size, hidden_size=128, encoded_size=10):
         super(SimpleAutoEncoder, self).__init__()
 
@@ -13,13 +13,14 @@ class SimpleAutoEncoder(nn.Module):
         self.decoder_output = nn.Linear(hidden_size, input_size)
 
     def encode(self, x):
-        x = self.encoder_hidden(x)
-        x = self.encoder_output(x)
+        x = F.gelu(self.encoder_hidden(x))
+        x = F.gelu(self.encoder_output(x))
         return x
 
     def decode(self, x):
-        x = self.decoder_hidden(x)
-        x = self.decoder_output(x)
+        x = F.gelu(self.decoder_hidden(x))
+        x = torch.sigmoid(self.decoder_output(x))  # this means that our model only works for normalized data
+        # x = self.decoder_output(x)  # kinda works for non-normalized input (although normalizing input is best)
         return x
 
     def forward(self, x):

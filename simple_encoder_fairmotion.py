@@ -69,23 +69,29 @@ for epoch in range(epochs):
     # display the epoch training loss
     print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
 
-# Visualize results on untrained data
-original_motion = Motion(name=test_dataset.motion.name, skel=test_dataset.motion.skel, fps=test_dataset.motion.fps)
-autoencoded_motion = Motion(name=test_dataset.motion.name, skel=test_dataset.motion.skel, fps=test_dataset.motion.fps)
+def save_viz(dataset, loader):
+    print(f"Saving {dataset.motion.name}")
+    # Visualize results on untrained data
+    original_motion = Motion(name=dataset.motion.name, skel=dataset.motion.skel, fps=dataset.motion.fps)
+    autoencoded_motion = Motion(name=dataset.motion.name, skel=dataset.motion.skel, fps=dataset.motion.fps)
 
-with torch.no_grad():
-    flattened_pose_matrix_batch: torch.Tensor
-    for flattened_pose_matrix_batch in test_loader:
-        # we get a batch of 4x4 transform matrix for each joint
-
-        input = flattened_pose_matrix_batch.to(device)
-        output = model(input)
-
+    with torch.no_grad():
         flattened_pose_matrix_batch: torch.Tensor
-        for flattened_pose_matrix in output:
-            autoencoded_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
-        for flattened_pose_matrix in flattened_pose_matrix_batch:
-            original_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+        for flattened_pose_matrix_batch in loader:
+            # we get a batch of 4x4 transform matrix for each joint
 
-motion_data.save(original_motion, f"data/generated/{autoencoded_motion.name}.orig.bvh")
-motion_data.save(autoencoded_motion, f"data/generated/{autoencoded_motion.name}.auto.bvh")
+            input = flattened_pose_matrix_batch.to(device)
+            output = model(input)
+
+            flattened_pose_matrix_batch: torch.Tensor
+            for flattened_pose_matrix in output:
+                autoencoded_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+            for flattened_pose_matrix in flattened_pose_matrix_batch:
+                original_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+
+    motion_data.save(original_motion, f"data/generated/{autoencoded_motion.name}.orig.bvh")
+    motion_data.save(autoencoded_motion, f"data/generated/{autoencoded_motion.name}.auto.bvh")
+
+
+save_viz(train_dataset, train_loader)
+save_viz(test_dataset, test_loader)
