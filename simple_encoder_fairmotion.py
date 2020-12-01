@@ -20,20 +20,27 @@ from simple_encoder import SimpleAutoEncoder
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-train_dataset = MotionDataset(motion_data.load("data/motions/CMU/01/01_01_poses.npz"))
+print("Loading train dataset...")
+train_dataset = MotionDataset([
+    motion_data.load("data/motions/CMU/01/01_01_poses.npz"),
+    motion_data.load("data/motions/CMU/01/01_02_poses.npz")
+])
 train_loader = DataLoader(
     train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True
 )
 
-test_dataset = MotionDataset(motion_data.load("data/motions/CMU/01/01_02_poses.npz"))
+print("Loading test dataset...")
+test_dataset = MotionDataset([motion_data.load("data/motions/CMU/02/02_01_poses.npz")])
 test_loader = DataLoader(
     test_dataset, batch_size=32, num_workers=4, pin_memory=True
 )
 
+print("Setting up model...")
 model = SimpleAutoEncoder(input_size=352, hidden_size=1024, encoded_size=100).double().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
+print("Starting training...")
 epochs = 10
 for epoch in range(epochs):
     loss = 0
@@ -68,6 +75,7 @@ for epoch in range(epochs):
 
     # display the epoch training loss
     print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
+
 
 def save_viz(dataset, loader):
     print(f"Saving {dataset.motion.name}")
