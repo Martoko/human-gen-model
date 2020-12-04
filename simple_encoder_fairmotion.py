@@ -1,3 +1,6 @@
+import os
+from math import inf
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,7 +13,7 @@ from fairmotion.data import amass
 from fairmotion.core.motion import Motion, Pose
 from fairmotion.ops import motion as motion_ops
 from fairmotion.tasks.motion_prediction import utils
-from fairmotion.utils import utils as fairmotion_utils
+from fairmotion.utils import utils as fairmotion_utils, conversions
 from human_body_prior.body_model.body_model import BodyModel
 from torch.utils.data import DataLoader
 
@@ -18,31 +21,50 @@ import motion_data
 from motion_dataset import MotionDataset
 from simple_encoder import SimpleAutoEncoder
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-print("Loading train dataset...")
-train_dataset = MotionDataset([
-    motion_data.load("data/motions/CMU/01/01_01_poses.npz"),
-    motion_data.load("data/motions/CMU/01/01_02_poses.npz")
-])
-train_loader = DataLoader(
-    train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True
-)
+print("Setting up train dataset...")
+train_dataset = MotionDataset(motion_data.load_train())
+print("Setting up train loader...")
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
 
-print("Loading test dataset...")
-test_dataset = MotionDataset([motion_data.load("data/motions/CMU/02/02_01_poses.npz")])
-test_loader = DataLoader(
-    test_dataset, batch_size=32, num_workers=4, pin_memory=True
+print("Setting up test dataset...")
+test_dataset = MotionDataset(
+    motion_data.load_test(),
+    std=train_dataset.std,
+    mean=train_dataset.mean
 )
+print("Setting up test loader...")
+test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4)
 
 print("Setting up model...")
-model = SimpleAutoEncoder(input_size=352, hidden_size=1024, encoded_size=100).double().to(device)
+model = SimpleAutoEncoder(input_size=198, hidden_size=2048, encoded_size=100).double().to(device)
+if os.path.exists("data/best_model.pt"):
+    print("Loading saved best model...")
+    model.load_state_dict(torch.load("data/best_model.pt"))
+best_test_loss = -inf
+best_model = model
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
+
+def test_eval():
+    model.eval()
+    with torch.no_grad():
+        loss = 0
+        flattened_pose_matrix_batch: torch.Tensor
+        for flattened_pose_matrix_batch in test_loader:
+            flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
+            outputs = model(flattened_pose_matrix_batch)
+            loss = criterion(outputs, flattened_pose_matrix_batch).item()
+
+        return loss / len(test_loader)
+
+
 print("Starting training...")
-epochs = 10
+epochs = 20
 for epoch in range(epochs):
+    model.train()
     loss = 0
     flattened_pose_matrix_batch: torch.Tensor
     for flattened_pose_matrix_batch in train_loader:
@@ -74,32 +96,59 @@ for epoch in range(epochs):
     loss = loss / len(train_loader)
 
     # display the epoch training loss
-    print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
+    test_loss = test_eval()
+
+    if test_loss < best_test_loss:
+        best_test_loss = test_loss
+        best_model = model
+
+    print("epoch : {}/{}, train loss = {:.6f}, test loss = {:.6f}".format(epoch + 1, epochs, loss, test_loss))
 
 
-def save_viz(dataset, loader):
-    print(f"Saving {dataset.motion.name}")
+print("Saving best model...")
+torch.save(best_model.state_dict(), "data/best_model.pt")
+
+def save_viz(dataset):
+    loader = DataLoader(dataset, batch_size=32, num_workers=4)
+    print(f"Saving {dataset.motion.name[0:246]}")
     # Visualize results on untrained data
-    original_motion = Motion(name=dataset.motion.name, skel=dataset.motion.skel, fps=dataset.motion.fps)
-    autoencoded_motion = Motion(name=dataset.motion.name, skel=dataset.motion.skel, fps=dataset.motion.fps)
+    original_motion = Motion(
+        name=dataset.motion.name,
+        skel=dataset.motion.skel,
+        fps=dataset.motion.fps
+    )
+    autoencoded_motion = Motion(
+        name=dataset.motion.name,
+        skel=dataset.motion.skel,
+        fps=dataset.motion.fps
+    )
 
     with torch.no_grad():
+        best_model.eval()
         flattened_pose_matrix_batch: torch.Tensor
         for flattened_pose_matrix_batch in loader:
             # we get a batch of 4x4 transform matrix for each joint
 
             input = flattened_pose_matrix_batch.to(device)
-            output = model(input)
+            output = best_model(input)
 
-            flattened_pose_matrix_batch: torch.Tensor
+            flattened_pose_matrix: torch.Tensor
             for flattened_pose_matrix in output:
-                autoencoded_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+                pose_matrix = conversions.R2T(
+                    dataset.unnormalize(flattened_pose_matrix.reshape((-1, 3, 3)).cpu())
+                )
+                autoencoded_motion.add_one_frame(t=None, pose_data=pose_matrix)
             for flattened_pose_matrix in flattened_pose_matrix_batch:
-                original_motion.add_one_frame(t=None, pose_data=flattened_pose_matrix.reshape((-1, 4, 4)).cpu())
+                pose_matrix = conversions.R2T(
+                    dataset.unnormalize(flattened_pose_matrix.reshape((-1, 3, 3)).cpu())
+                )
+                original_motion.add_one_frame(t=None, pose_data=pose_matrix)
 
     motion_data.save(original_motion, f"data/generated/{autoencoded_motion.name}.orig.bvh")
     motion_data.save(autoencoded_motion, f"data/generated/{autoencoded_motion.name}.auto.bvh")
 
 
-save_viz(train_dataset, train_loader)
-save_viz(test_dataset, test_loader)
+for path in motion_data.test_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
+for path in motion_data.train_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from simple_encoder import SimpleAutoEncoder
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
@@ -23,7 +23,7 @@ train_loader = torch.utils.data.DataLoader(
 )
 
 test_loader = torch.utils.data.DataLoader(
-    test_dataset, batch_size=32, shuffle=False, num_workers=4
+    test_dataset, batch_size=32, num_workers=4
 )
 
 images = [[] for i in range(10)]

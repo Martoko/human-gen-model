@@ -10,6 +10,7 @@ class SimpleAutoEncoder(nn.Module):
         self.encoder_hidden = nn.Linear(input_size, hidden_size)
         self.encoder_output = nn.Linear(hidden_size, encoded_size)
         self.decoder_hidden = nn.Linear(encoded_size, hidden_size)
+        self.decoder_hidden2 = nn.Linear(hidden_size, hidden_size)
         self.decoder_output = nn.Linear(hidden_size, input_size)
 
     def encode(self, x):
@@ -19,8 +20,7 @@ class SimpleAutoEncoder(nn.Module):
 
     def decode(self, x):
         x = F.gelu(self.decoder_hidden(x))
-        x = F.relu(self.decoder_output(x))
-        # x = self.decoder_output(x)  # kinda works for non-normalized input (although normalizing input is best)
+        x = self.decoder_output(x)
         return x
 
     def forward(self, x):
