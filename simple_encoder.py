@@ -20,6 +20,7 @@ class SimpleAutoEncoder(nn.Module):
 
     def decode(self, x):
         x = F.gelu(self.decoder_hidden(x))
+        # tanh good? https://github.com/AntixK/PyTorch-VAE/blob/8700d245a9735640dda458db4cf40708caf2e77f/models/vanilla_vae.py#L8
         x = self.decoder_output(x)
         return x
 
