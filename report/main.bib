@@ -3,7 +3,7 @@
   author={Mahmood, Naureen and Ghorbani, Nima and F. Troje, Nikolaus and Pons-Moll, Gerard and Black, Michael J.},
   booktitle = {The IEEE International Conference on Computer Vision (ICCV)},
   year={2019},
-  month = {Oct},
+  month = oct,
   url = {https://amass.is.tue.mpg.de},
   month_numeric = {10}
 }
@@ -36,4 +36,108 @@
   publisher = {GitHub},
   journal = {GitHub repository},
   howpublished = {\url{https://github.com/AntixK/PyTorch-VAE}}
+}
+
+@article{holden2020,
+author = {Holden, Daniel and Kanoun, Oussama and Perepichka, Maksym and Popa, Tiberiu},
+title = {Learned Motion Matching},
+year = {2020},
+issue_date = {July 2020},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {39},
+number = {4},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3386569.3392440},
+doi = {10.1145/3386569.3392440},
+abstract = {In this paper we present a learned alternative to the Motion Matching algorithm which retains the positive properties of Motion Matching but additionally achieves the scalability of neural-network-based generative models. Although neural-network-based generative models for character animation are capable of learning expressive, compact controllers from vast amounts of animation data, methods such as Motion Matching still remain a popular choice in the games industry due to their flexibility, predictability, low preprocessing time, and visual quality - all properties which can sometimes be difficult to achieve with neural-network-based methods. Yet, unlike neural networks, the memory usage of such methods generally scales linearly with the amount of data used, resulting in a constant trade-off between the diversity of animation which can be produced and real world production budgets. In this work we combine the benefits of both approaches and, by breaking down the Motion Matching algorithm into its individual steps, show how learned, scalable alternatives can be used to replace each operation in turn. Our final model has no need to store animation data or additional matching meta-data in memory, meaning it scales as well as existing generative models. At the same time, we preserve the behavior of Motion Matching, retaining the quality, control, and quick iteration time which are so important in the industry.},
+journal = {ACM Trans. Graph.},
+month = jul,
+articleno = {53},
+numpages = {13},
+keywords = {motion matching, neural networks, character animation, generative models, animation}
+}
+
+@article{holden2017,
+author = {Holden, Daniel and Komura, Taku and Saito, Jun},
+title = {Phase-Functioned Neural Networks for Character Control},
+year = {2017},
+issue_date = {July 2017},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {36},
+number = {4},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3072959.3073663},
+doi = {10.1145/3072959.3073663},
+abstract = {We present a real-time character control mechanism using a novel neural network architecture called a Phase-Functioned Neural Network. In this network structure, the weights are computed via a cyclic function which uses the phase as an input. Along with the phase, our system takes as input user controls, the previous state of the character, the geometry of the scene, and automatically produces high quality motions that achieve the desired user control. The entire network is trained in an end-to-end fashion on a large dataset composed of locomotion such as walking, running, jumping, and climbing movements fitted into virtual environments. Our system can therefore automatically produce motions where the character adapts to different geometric environments such as walking and running over rough terrain, climbing over large rocks, jumping over obstacles, and crouching under low ceilings. Our network architecture produces higher quality results than time-series autoregressive models such as LSTMs as it deals explicitly with the latent variable of motion relating to the phase. Once trained, our system is also extremely fast and compact, requiring only milliseconds of execution time and a few megabytes of memory, even when trained on gigabytes of motion data. Our work is most appropriate for controlling characters in interactive scenes such as computer games and virtual reality systems.},
+journal = {ACM Trans. Graph.},
+month = jul,
+articleno = {42},
+numpages = {13},
+keywords = {neural networks, human motion, character control, locomotion, deep learning, character animation}
+}
+
+@article{starke2020,
+author = {Starke, Sebastian and Zhao, Yiwei and Komura, Taku and Zaman, Kazi},
+title = {Local Motion Phases for Learning Multi-Contact Character Movements},
+year = {2020},
+issue_date = {July 2020},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {39},
+number = {4},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3386569.3392450},
+doi = {10.1145/3386569.3392450},
+abstract = {Training a bipedal character to play basketball and interact with objects, or a quadruped character to move in various locomotion modes, are difficult tasks due to the fast and complex contacts happening during the motion. In this paper, we propose a novel framework to learn fast and dynamic character interactions that involve multiple contacts between the body and an object, another character and the environment, from a rich, unstructured motion capture database. We use one-on-one basketball play and character interactions with the environment as examples. To achieve this task, we propose a novel feature called local motion phase, that can help neural networks to learn asynchronous movements of each bone and its interaction with external objects such as a ball or an environment. We also propose a novel generative scheme to reproduce a wide variation of movements from abstract control signals given by a gamepad, which can be useful for changing the style of the motion under the same context. Our scheme is useful for animating contact-rich, complex interactions for real-time applications such as computer games.},
+journal = {ACM Trans. Graph.},
+month = jul,
+articleno = {54},
+numpages = {14},
+keywords = {human motion, character control, deep learning, character animation, character interactions, neural networks}
+}
+
+@misc{hu2020predicting,
+      title={Predicting Long-Term Skeletal Motions by a Spatio-Temporal Hierarchical Recurrent Network},
+      author={Junfeng Hu and Zhencheng Fan and Jun Liao and Li Liu},
+      year={2020},
+      eprint={1911.02404},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+
+@misc{jain2016structuralrnn,
+      title={Structural-RNN: Deep Learning on Spatio-Temporal Graphs},
+      author={Ashesh Jain and Amir R. Zamir and Silvio Savarese and Ashutosh Saxena},
+      year={2016},
+      eprint={1511.05298},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+
+@misc{ruiz2019human,
+      title={Human Motion Prediction via Spatio-Temporal Inpainting},
+      author={Alejandro Hernandez Ruiz and Juergen Gall and Francesc Moreno-Noguer},
+      year={2019},
+      eprint={1812.05478},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+
+@misc{karras2019stylebased,
+      title={A Style-Based Generator Architecture for Generative Adversarial Networks},
+      author={Tero Karras and Samuli Laine and Timo Aila},
+      year={2019},
+      eprint={1812.04948},
+      archivePrefix={arXiv},
+      primaryClass={cs.NE}
+}
+
+@Misc{gopinath2020fairmotion,
+  author =       {Gopinath, Deepak and Won, Jungdam},
+  title =        {fairmotion - Tools to load, process and visualize motion capture data},
+  howpublished = {Github},
+  year =         {2020},
+  url =          {https://github.com/facebookresearch/fairmotion}
 }

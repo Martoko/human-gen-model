@@ -13,10 +13,11 @@
 
 \usepackage{url}
 
+\usepackage[pdfusetitle]{hyperref}
+
 \usepackage[
-    style=authoryear-icomp,
-    maxbibnames=9,
-    maxcitenames=2,
+%    style=draft,
+    style=nature,
     backend=biber
 ]{biblatex}
 \addbibresource{main.bib}
@@ -53,33 +54,21 @@
 \maketitle
 
 \section{Introduction}\label{sec:introduction}
-short intro to the project
+\input{introduction}
 
 \section{Background}\label{sec:background}
-a chance to write a bit about what i learned from my lit study
+\input{background}
 
 \section{Method}\label{sec:method}
-\subsection{Models}\label{subsec:models}
-detailed description of my models what makes them unqiue how they work, etc
-\subsection{Training}\label{subsec:training}
-notes on how the training was performed
+\input{method}
 
 \section{discussion}\label{sec:discussion}
-\subsection{Data}\label{subsec:data}
-\subsection{Results}\label{subsec:results}
-a section presenting my results and comparing them to other results, might have to create some "artificial" results
-to get anything good to compare with, like using linear interpolation as a baseline, and final ik as "competing"
-solution, this is also a good place to show some concrete examples of what my models can do, using images
-
-\subsection{Further research}\label{subsec:further-research}
-as with all papers that are things that i did not get to explore, this will detail where i think further energy should
-be exerted based on my findings.
+\input{discussion}
 
 \section{Conclusion}\label{sec:conclusion}
+\input{conclusion}
 
 \newpage
-
 \printbibliography%
-
 \end{document}
 

@@ -1,0 +1,19 @@
+Several tasks exist around the modelling of human motion and the given task usually dictates the shape of the model to a certain extent.
+
+One such example is animating a human 3D mesh to conform with input from a game controller or equivalent keyboard input.
+This task is of particular interest for the video game industry.
+One such model is a phase-functioned neural network, wherein multiple networks are samples in a phase, as to mimic the repetitive nature of walking~\cite{holden2017}.
+This approach can be extended to other tasks, such as playing basketball~\cite{starke2020}.
+This approach values being able to run in real-time higher than animation quality.
+This makes it ideal for video games, but less ideal for other applications where the animations are typically produced in advance and as such there is no requirement for real-time production.
+
+Another example is motion prediction, where the model is given a sequence of human poses and asked to generate future human poses.
+This is of particular interest for the autonomous car industry, but also has a potential impact for all industries that produce animations, which includes industries working with: movies, video games, entertainment, infotainment, education, etc.
+As auto-completing an animation could potentially speed up the time it takes to produce a finished animation.
+A common approach to this task is to use recurrent neural networks~\cite{hu2020predicting,jain2016structuralrnn}.
+Generative adversarial networks (GANs) are commonly used in image based generative tasks, such as generating human faces~\cite{karras2019stylebased}.
+GANs have been shown to also be effective for human motion prediction~\cite{ruiz2019human}.
+
+In-painting of human motion can be considered a special case of motion prediction, where the model gets both the past and future motion, instead of only getting past motion.
+This could be used to help speed up the animation of humanoids for video games, movies, etc.
+It seems that data on this particular task is relatively sparse.

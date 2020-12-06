@@ -1,0 +1,9 @@
+\subsection{Data}\label{subsec:data}
+Training a model for human motion analysis requires a great deal of human motion data. There exists two efforts to help in this regard. First of the AMASS data set is an attempt to amass a large quantity of human motion data from motion capture \cite{AMASS:2019}. Secondly the fairmotion library is a library that allows you to take motion from all of the heterogeneous formats currently available, including the AMASS data set, and access all of it through one homogenous interface \cite{gopinath2020fairmotion}. The fairmotion library requires both motion data and skeleton/model data of a human. As such, AMASS was used for the motion data and \cite{MANO:2017} for the skeleton/model data.
+
+Only a subset of the AMASS data set was used. This sped up training by training on less data and it meant not having to stream in training data, as the subset used was small enough to fit into memory.
+
+\subsection{Models}\label{subsec:models}
+detailed description of my models what makes them unqiue how they work, etc
+\subsection{Training}\label{subsec:training}
+notes on how the training was performed
