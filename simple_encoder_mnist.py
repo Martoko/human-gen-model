@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import matplotlib.pyplot as plt
+from torchviz import make_dot
 
 from simple_encoder import SimpleAutoEncoder
 
@@ -10,18 +11,22 @@ device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
+print("Setting up train dataset...")
 train_dataset = torchvision.datasets.FashionMNIST(
     root="~/torch_datasets", train=True, transform=transform, download=True
 )
 
+print("Setting up test dataset...")
 test_dataset = torchvision.datasets.FashionMNIST(
     root="~/torch_datasets", train=False, transform=transform, download=True
 )
 
+print("Setting up train loader...")
 train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=8, shuffle=True, num_workers=4, pin_memory=True
 )
 
+print("Setting up test loader...")
 test_loader = torch.utils.data.DataLoader(
     test_dataset, batch_size=32, num_workers=4
 )
@@ -29,7 +34,7 @@ test_loader = torch.utils.data.DataLoader(
 images = [[] for i in range(10)]
 
 
-def visualize(epoch):
+def visualize(epoch_name):
     global images
     with torch.no_grad():
         truths = [test_dataset[i][0][0] for i in range(len(images))]
@@ -38,7 +43,7 @@ def visualize(epoch):
             flat_input = inp.view(-1, 784).to(device)
             flat_output = model(flat_input).cpu()
             output = flat_output.view(28, 28)
-            images[i] += [[output, str(epoch)]]
+            images[i] += [[output, str(epoch_name)]]
 
         num_row = len(images)
         num_col = len(images[0]) + 1
@@ -55,12 +60,15 @@ def visualize(epoch):
         fig.show()
 
 
-model = SimpleAutoEncoder(input_size=28 * 28, hidden_size=1024, encoded_size=100).to(device)
+print("Setting up model...")
+model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=[512, 256, 128]).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
 # TODO: save best model
 
+print("Starting training...")
+saved_model_visualization = False
 epochs = 10
 for epoch in range(epochs):
     loss = 0
@@ -75,6 +83,10 @@ for epoch in range(epochs):
 
         # compute reconstructions
         outputs = model(batch_features)
+
+        if not saved_model_visualization:
+            make_dot(outputs, params=dict(model.named_parameters()))
+            saved_model_visualization = True
 
         # compute training reconstruction loss
         train_loss = criterion(outputs, batch_features)
@@ -96,4 +108,5 @@ for epoch in range(epochs):
     print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
     if epoch % (epochs / 10) == 0:
         visualize(epoch + 1)
-visualize(epochs - 1)
+if(epochs > 10 and epochs % 10 > 0):
+    visualize(epochs)

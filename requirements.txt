@@ -4,3 +4,4 @@ torch==1.4.0 # fairmotion requires 1.4.0
 torchvision==0.5.0 # torch 1.4.0 requires 0.5.0
 matplotlib~=3.3.2
 numpy~=1.19.3
+torchviz
