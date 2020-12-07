@@ -74,10 +74,11 @@ def test_eval():
                 loss = criterion(outputs, flattened_pose_matrix_batch).item()
             elif model_type == "vae":
                 reconstructed_input, mu, log_var = outputs
-                loss = model.loss_function(
+                losses = model.loss_function(
                     reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
                     kld_weight=batch_size / len(train_dataset)
-                )["loss"]
+                )
+                loss += losses["loss"]
             else:
                 raise Exception("Unknown model type")
 
