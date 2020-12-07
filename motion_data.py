@@ -91,4 +91,7 @@ def load(path: str) -> Motion:
 
 
 def save(motion: Motion, path: str) -> None:
+    dir = os.path.dirname(path)
+    if not os.path.exists(dir):
+        os.mkdir(dir)
     bvh.save(motion, path)

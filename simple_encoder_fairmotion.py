@@ -16,17 +16,20 @@ from fairmotion.tasks.motion_prediction import utils
 from fairmotion.utils import utils as fairmotion_utils, conversions
 from human_body_prior.body_model.body_model import BodyModel
 from torch.utils.data import DataLoader
+from torchviz import make_dot
 
 import motion_data
 from motion_dataset import MotionDataset
 from simple_encoder import SimpleAutoEncoder
+from vae_encoder import VanillaVAE
 
 device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
+batch_size = 32
 
 print("Setting up train dataset...")
 train_dataset = MotionDataset(motion_data.load_train())
 print("Setting up train loader...")
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
 print("Setting up test dataset...")
 test_dataset = MotionDataset(
@@ -35,13 +38,24 @@ test_dataset = MotionDataset(
     mean=train_dataset.mean
 )
 print("Setting up test loader...")
-test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
-print("Setting up model...")
-model = SimpleAutoEncoder(input_size=198, hidden_size=2048, encoded_size=100).double().to(device)
-if os.path.exists("data/best_model.pt"):
-    print("Loading saved best model...")
-    model.load_state_dict(torch.load("data/best_model.pt"))
+model = None
+model_type = "vae"
+if model_type == "simple":
+    print("Setting up simple model...")
+    model = SimpleAutoEncoder(input_size=198, hidden_dimensions=[128, 64, 32]).double().to(device)
+    if os.path.exists(f"data/best_{model_type}.pt"):
+        print("Loading saved best simple model...")
+        model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
+elif model_type == "vae":
+    print("Setting up VAE model...")
+    model = VanillaVAE(input_size=198, hidden_dimensions=[128, 64, 32]).double().to(device)
+    if os.path.exists(f"data/best_{model_type}.pt"):
+        print("Loading saved best VAE model...")
+        model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
+else:
+    raise Exception("Unknown model type")
 best_test_loss = -inf
 best_model = model
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -56,11 +70,21 @@ def test_eval():
         for flattened_pose_matrix_batch in test_loader:
             flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
             outputs = model(flattened_pose_matrix_batch)
-            loss = criterion(outputs, flattened_pose_matrix_batch).item()
+            if model_type == "simple":
+                loss = criterion(outputs, flattened_pose_matrix_batch).item()
+            elif model_type == "vae":
+                reconstructed_input, mu, log_var = outputs
+                loss = model.loss_function(
+                    reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
+                    kld_weight=batch_size / len(train_dataset)
+                )["loss"]
+            else:
+                raise Exception("Unknown model type")
 
         return loss / len(test_loader)
 
 
+saved_model_visualization = False
 print("Starting training...")
 epochs = 20
 for epoch in range(epochs):
@@ -80,8 +104,21 @@ for epoch in range(epochs):
         # compute reconstructions
         outputs = model(flattened_pose_matrix_batch)
 
+        if not saved_model_visualization:
+            make_dot(outputs[0], params=dict(model.named_parameters())).save(f"data/model-visualizations/{model_type}_mnist")
+            saved_model_visualization = True
+
         # compute training reconstruction loss
-        train_loss = criterion(outputs, flattened_pose_matrix_batch)
+        if model_type == "simple":
+            train_loss = criterion(outputs, flattened_pose_matrix_batch)
+        elif model_type == "vae":
+            reconstructed_input, mu, log_var = outputs
+            train_loss = model.loss_function(
+                reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
+                kld_weight=batch_size / len(train_dataset)
+            )["loss"]
+        else:
+            raise Exception("Unknown model type")
 
         # compute accumulated gradients
         train_loss.backward()
@@ -104,9 +141,9 @@ for epoch in range(epochs):
 
     print("epoch : {}/{}, train loss = {:.6f}, test loss = {:.6f}".format(epoch + 1, epochs, loss, test_loss))
 
-
 print("Saving best model...")
-torch.save(best_model.state_dict(), "data/best_model.pt")
+torch.save(best_model.state_dict(), f"data/best_{model_type}.pt")
+
 
 def save_viz(dataset):
     loader = DataLoader(dataset, batch_size=32, num_workers=4)
@@ -130,7 +167,15 @@ def save_viz(dataset):
             # we get a batch of 4x4 transform matrix for each joint
 
             input = flattened_pose_matrix_batch.to(device)
-            output = best_model(input)
+
+            output = None
+            if model_type == "simple":
+                output = best_model(input)
+            elif model_type == "vae":
+                reconstructed_input, mu, log_var = best_model(input)
+                output = reconstructed_input
+            else:
+                raise Exception("Unknown model type")
 
             flattened_pose_matrix: torch.Tensor
             for flattened_pose_matrix in output:
@@ -144,8 +189,8 @@ def save_viz(dataset):
                 )
                 original_motion.add_one_frame(t=None, pose_data=pose_matrix)
 
-    motion_data.save(original_motion, f"data/generated/{autoencoded_motion.name}.orig.bvh")
-    motion_data.save(autoencoded_motion, f"data/generated/{autoencoded_motion.name}.auto.bvh")
+    motion_data.save(original_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.orig.bvh")
+    motion_data.save(autoencoded_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.auto.bvh")
 
 
 for path in motion_data.test_motion_paths()[:2]:

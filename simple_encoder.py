@@ -24,17 +24,16 @@ class SimpleAutoEncoder(nn.Module):
             ]
         self.encoder = nn.Sequential(*encoding_steps)
 
-        # 32 -> 64 -> 128 -> 256 -> 512 -> input_size -> tanh(input_size)
+        # 32 -> 64 -> 128 -> 256 -> 512 -(linear)-> input_size
         hidden_dimensions.reverse()
         decoding_steps = []
-        for step_input_size, step_output_size in zip(hidden_dimensions, hidden_dimensions[1:]):
+        for step_input_size, step_output_size in zip(hidden_dimensions[:-1], hidden_dimensions[1:-1]):
             decoding_steps += [
                 nn.Linear(step_input_size, step_output_size),
                 nn.GELU()
             ]
         decoding_steps += [
-            nn.Linear(hidden_dimensions[-1], hidden_dimensions[-1]),
-            nn.Tanh()
+            nn.Linear(hidden_dimensions[-2], hidden_dimensions[-1])
         ]
         self.decoder = nn.Sequential(*decoding_steps)
 

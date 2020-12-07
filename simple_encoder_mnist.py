@@ -61,7 +61,7 @@ def visualize(epoch_name):
 
 
 print("Setting up model...")
-model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=[512, 256, 128]).to(device)
+model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=[512, 256]).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
@@ -85,7 +85,7 @@ for epoch in range(epochs):
         outputs = model(batch_features)
 
         if not saved_model_visualization:
-            make_dot(outputs, params=dict(model.named_parameters()))
+            make_dot(outputs, params=dict(model.named_parameters())).save("data/model-visualizations/simple_mnist")
             saved_model_visualization = True
 
         # compute training reconstruction loss
