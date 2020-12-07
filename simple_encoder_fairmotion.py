@@ -69,11 +69,12 @@ def test_eval():
         flattened_pose_matrix_batch: torch.Tensor
         for flattened_pose_matrix_batch in test_loader:
             flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
-            outputs = model(flattened_pose_matrix_batch)
             if model_type == "simple":
+                outputs = model(flattened_pose_matrix_batch)
                 loss = criterion(outputs, flattened_pose_matrix_batch).item()
             elif model_type == "vae":
-                reconstructed_input, mu, log_var = outputs
+                mu, log_var = model.encode(flattened_pose_matrix_batch)
+                reconstructed_input = model.decode(mu)
                 losses = model.loss_function(
                     reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
                     kld_weight=batch_size / len(train_dataset)
@@ -173,7 +174,8 @@ def save_viz(dataset):
             if model_type == "simple":
                 output = best_model(input)
             elif model_type == "vae":
-                reconstructed_input, mu, log_var = best_model(input)
+                mu, log_var = best_model.encode(flattened_pose_matrix_batch)
+                reconstructed_input = best_model.decode(mu)
                 output = reconstructed_input
             else:
                 raise Exception("Unknown model type")
