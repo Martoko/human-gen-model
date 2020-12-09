@@ -41,17 +41,21 @@ test_dataset = MotionDataset(
 print("Setting up test loader...")
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
+# hidden_dimensions=[256, 512, 1024, 2048, 1024, 512, 256, 128, 64]
+hidden_dimensions = [256, 512, 1024, 512, 256, 128]
+# hidden_dimensions = [256]
+
 model = None
 model_type = "vae"
 if model_type == "simple":
     print("Setting up simple model...")
-    model = SimpleAutoEncoder(input_size=198, hidden_dimensions=[128, 64, 32]).double().to(device)
+    model = SimpleAutoEncoder(input_size=198, hidden_dimensions=hidden_dimensions).double().to(device)
     if os.path.exists(f"data/best_{model_type}.pt"):
         print("Loading saved best simple model...")
         model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
 elif model_type == "vae":
     print("Setting up VAE model...")
-    model = VanillaVAE(input_size=198, hidden_dimensions=[128, 64, 32]).double().to(device)
+    model = VanillaVAE(input_size=198, hidden_dimensions=hidden_dimensions).double().to(device)
     if os.path.exists(f"data/best_{model_type}.pt"):
         print("Loading saved best VAE model...")
         model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
@@ -87,9 +91,9 @@ def test_eval():
         return loss / len(test_loader)
 
 
-should_train = True
+should_train = False
 if should_train:
-    saved_model_visualization = True
+    saved_model_visualization = False
     print("Starting training...")
     epochs = 20
     for epoch in range(epochs):
@@ -161,7 +165,8 @@ def evaluate(motion: Motion, steps: List[int]) -> float:
         motion_data.save(linear_inpainted_motion, f"data/generated/linear/inpaint_{step}_{motion.name}.bvh")
         latent_step_loss = mse_loss(motion, latent_inpainted_motion)
         linear_step_loss = mse_loss(motion, linear_inpainted_motion)
-        print(f"motion: {motion.name}, step: {step}, latent loss: {latent_step_loss:.6f}, linear loss: {linear_step_loss:.6f}, diff {linear_step_loss - latent_step_loss:.6f}")
+        print(
+            f"motion: {motion.name}, step: {step}, latent loss: {latent_step_loss:.6f}, linear loss: {linear_step_loss:.6f}, diff {linear_step_loss - latent_step_loss:.6f}")
         loss += latent_step_loss
     return loss / len(steps)
 
@@ -282,7 +287,7 @@ if should_evaluate:
     best_model.eval()
     with torch.no_grad():
         motion = motion_data.load(motion_data.test_motion_paths()[0])
-        loss = evaluate(motion, list(range(1, 17)))  # [1, 2, 4, 8, 16])
+        loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])  # [1, 2, 4, 8, 16])
 
 for path in motion_data.test_motion_paths()[:2]:
     save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
