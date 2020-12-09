@@ -1,5 +1,6 @@
 import os
 from math import inf
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -86,65 +87,145 @@ def test_eval():
         return loss / len(test_loader)
 
 
-saved_model_visualization = False
-print("Starting training...")
-epochs = 20
-for epoch in range(epochs):
-    model.train()
+should_train = True
+if should_train:
+    saved_model_visualization = True
+    print("Starting training...")
+    epochs = 20
+    for epoch in range(epochs):
+        model.train()
+        loss = 0
+        flattened_pose_matrix_batch: torch.Tensor
+        for flattened_pose_matrix_batch in train_loader:
+            # reshape mini-batch data to [N, 784] matrix
+            # load it to the active device
+            # batch_features = batch_features.view(-1, 28 * 28).to(device)
+            flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
+
+            # reset the gradients back to zero
+            # PyTorch accumulates gradients on subsequent backward passes
+            optimizer.zero_grad()
+
+            # compute reconstructions
+            outputs = model(flattened_pose_matrix_batch)
+
+            if not saved_model_visualization:
+                make_dot(outputs[0], params=dict(model.named_parameters())).save(
+                    f"data/model-visualizations/{model_type}_mnist")
+                saved_model_visualization = True
+
+            # compute training reconstruction loss
+            if model_type == "simple":
+                train_loss = criterion(outputs, flattened_pose_matrix_batch)
+            elif model_type == "vae":
+                reconstructed_input, mu, log_var = outputs
+                train_loss = model.loss_function(
+                    reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
+                    kld_weight=batch_size / len(train_dataset)
+                )["loss"]
+            else:
+                raise Exception("Unknown model type")
+
+            # compute accumulated gradients
+            train_loss.backward()
+
+            # perform parameter update based on current gradients
+            optimizer.step()
+
+            # add the mini-batch training loss to epoch loss
+            loss += train_loss.item()
+
+        # compute the epoch training loss
+        loss = loss / len(train_loader)
+
+        # display the epoch training loss
+        test_loss = test_eval()
+
+        if test_loss < best_test_loss:
+            best_test_loss = test_loss
+            best_model = model
+
+        print("epoch : {}/{}, train loss = {:.6f}, test loss = {:.6f}".format(epoch + 1, epochs, loss, test_loss))
+
+    print("Saving best model...")
+    torch.save(best_model.state_dict(), f"data/best_{model_type}.pt")
+
+
+def evaluate(motion: Motion, steps: List[int]) -> float:
+    print(f"Evaluating in-painting of {motion.name}...")
     loss = 0
-    flattened_pose_matrix_batch: torch.Tensor
-    for flattened_pose_matrix_batch in train_loader:
-        # reshape mini-batch data to [N, 784] matrix
-        # load it to the active device
-        # batch_features = batch_features.view(-1, 28 * 28).to(device)
-        flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
+    for step in steps:
+        latent_inpainted_motion = inpaint_motion(motion, step, "latent")
+        linear_inpainted_motion = inpaint_motion(motion, step, "linear")
+        motion_data.save(latent_inpainted_motion, f"data/generated/{model_type}/inpaint_{step}_{motion.name}.bvh")
+        motion_data.save(linear_inpainted_motion, f"data/generated/linear/inpaint_{step}_{motion.name}.bvh")
+        latent_step_loss = mse_loss(motion, latent_inpainted_motion)
+        linear_step_loss = mse_loss(motion, linear_inpainted_motion)
+        print(f"motion: {motion.name}, step: {step}, latent loss: {latent_step_loss:.6f}, linear loss: {linear_step_loss:.6f}, diff {linear_step_loss - latent_step_loss:.6f}")
+        loss += latent_step_loss
+    return loss / len(steps)
 
-        # reset the gradients back to zero
-        # PyTorch accumulates gradients on subsequent backward passes
-        optimizer.zero_grad()
 
-        # compute reconstructions
-        outputs = model(flattened_pose_matrix_batch)
+def inpaint_motion(motion: Motion, step: int, interpolation: str) -> Motion:
+    """Returns a motion that has been inpainted by only preserving every `step` frames"""
+    inpainted_motion = Motion.from_matrix(motion.to_matrix(), motion.skel)
+    for begin, end in zip(range(0, inpainted_motion.num_frames(), step),
+                          range(0, inpainted_motion.num_frames(), step)[1:]):
+        for i in range(begin + 1, end):
+            progress = (i - begin) / (end - begin)
+            if interpolation == "latent":
+                inpainted_motion.poses[i] = latent_interpolate(inpainted_motion.poses[begin],
+                                                               inpainted_motion.poses[end],
+                                                               motion.poses[i],  # for root position data
+                                                               progress)
+            elif interpolation == "linear":
+                inpainted_motion.poses[i] = linear_interpolate(inpainted_motion.poses[begin],
+                                                               inpainted_motion.poses[end],
+                                                               motion.poses[i],  # for root position data
+                                                               progress)
+            else:
+                raise Exception("Unknown interpolation")
+    return inpainted_motion
 
-        if not saved_model_visualization:
-            make_dot(outputs[0], params=dict(model.named_parameters())).save(f"data/model-visualizations/{model_type}_mnist")
-            saved_model_visualization = True
 
-        # compute training reconstruction loss
-        if model_type == "simple":
-            train_loss = criterion(outputs, flattened_pose_matrix_batch)
-        elif model_type == "vae":
-            reconstructed_input, mu, log_var = outputs
-            train_loss = model.loss_function(
-                reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
-                kld_weight=batch_size / len(train_dataset)
-            )["loss"]
-        else:
-            raise Exception("Unknown model type")
+def mse_loss(original_motion: Motion, inpainted_motion: Motion) -> float:
+    error = 0
+    count = 0
+    for original_pose, inpainted_pose in zip(original_motion.poses, inpainted_motion.poses):
+        original_matrix = original_pose.to_matrix().flatten()
+        inpainted_matrix = inpainted_pose.to_matrix().flatten()
+        for original_value, inpainted_value in zip(original_matrix, inpainted_matrix):
+            count += 1
+            error += pow(original_value - inpainted_value, 2)
 
-        # compute accumulated gradients
-        train_loss.backward()
+    return error / count
 
-        # perform parameter update based on current gradients
-        optimizer.step()
 
-        # add the mini-batch training loss to epoch loss
-        loss += train_loss.item()
+def latent_interpolate(left: Pose, right: Pose, actual: Pose, progress: float) -> Pose:
+    left_input = torch.tensor(train_dataset.normalize(conversions.T2R(left.to_matrix())).flatten())
+    right_input = torch.tensor(train_dataset.normalize(conversions.T2R(right.to_matrix())).flatten())
 
-    # compute the epoch training loss
-    loss = loss / len(train_loader)
+    left_latent = best_model.encode(left_input) if model_type == "simple" else best_model.encode(left_input)[0]
+    right_latent = best_model.encode(right_input) if model_type == "simple" else best_model.encode(right_input)[0]
+    interpolated_latent_values: List[float] = []
+    for i in range(len(left_latent)):
+        interpolated_latent_values += [left_latent[i] + (right_latent[i] - left_latent[i]) * progress]
+    interpolated_latent = torch.tensor(interpolated_latent_values)
+    interpolated = best_model.decode(interpolated_latent)
+    pose_matrix = conversions.Rp2T(
+        train_dataset.unnormalize(interpolated.reshape((-1, 3, 3)).cpu()),
+        conversions.T2p(actual.to_matrix())
+    )
+    return Pose.from_matrix(pose_matrix, left.skel)
 
-    # display the epoch training loss
-    test_loss = test_eval()
 
-    if test_loss < best_test_loss:
-        best_test_loss = test_loss
-        best_model = model
-
-    print("epoch : {}/{}, train loss = {:.6f}, test loss = {:.6f}".format(epoch + 1, epochs, loss, test_loss))
-
-print("Saving best model...")
-torch.save(best_model.state_dict(), f"data/best_{model_type}.pt")
+def linear_interpolate(left: Pose, right: Pose, actual: Pose, progress: float) -> Pose:
+    interpolated = Pose.interpolate(left, right, progress)
+    pose_matrix = conversions.Rp2T(
+        conversions.T2R(interpolated.to_matrix()),
+        conversions.T2p(actual.to_matrix())
+    )
+    return Pose.from_matrix(pose_matrix, left.skel)
 
 
 def save_viz(dataset):
@@ -195,6 +276,13 @@ def save_viz(dataset):
     motion_data.save(original_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.orig.bvh")
     motion_data.save(autoencoded_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.auto.bvh")
 
+
+should_evaluate = True
+if should_evaluate:
+    best_model.eval()
+    with torch.no_grad():
+        motion = motion_data.load(motion_data.test_motion_paths()[0])
+        loss = evaluate(motion, list(range(1, 17)))  # [1, 2, 4, 8, 16])
 
 for path in motion_data.test_motion_paths()[:2]:
     save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
