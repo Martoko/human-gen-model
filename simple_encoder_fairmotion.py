@@ -64,7 +64,6 @@ else:
 best_test_loss = -inf
 best_model = model
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.MSELoss()
 
 
 def test_eval():
@@ -77,12 +76,14 @@ def test_eval():
             flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
             if model_type == "simple":
                 outputs = model(flattened_pose_matrix_batch)
-                loss = criterion(outputs, flattened_pose_matrix_batch).item()
+                reconstruction_loss += F.mse_loss(reconstructed_input, flattened_pose_matrix_batch,
+                                                  reduction='sum').item()
             elif model_type == "vae":
                 mu, log_var = model.encode(flattened_pose_matrix_batch)
                 reconstructed_input = model.decode(mu)
-                reconstruction_loss += F.mse_loss(reconstructed_input, flattened_pose_matrix_batch, reduction='sum')
-                kld_loss += -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+                reconstruction_loss += F.mse_loss(reconstructed_input, flattened_pose_matrix_batch,
+                                                  reduction='sum').item()
+                kld_loss += -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()).item()
             else:
                 raise Exception("Unknown model type")
 
@@ -96,9 +97,17 @@ def test_eval():
 should_train = True
 if should_train:
     saved_model_visualization = False
-    print("Starting training...")
+
     train_losses = []
     test_losses = []
+    if os.path.exists(f"data/best_{model_type}_losses.csv"):
+        print("Loading losses...")
+        with open(f"data/best_{model_type}_losses.csv", "r") as file:
+            for line in file.readlines()[1:]:
+                train_losses += [[float(string) for string in line.split(",")][:3]]
+                test_losses += [[float(string) for string in line.split(",")][3:]]
+
+    print("Starting training...")
     epochs = 100
     for epoch in range(epochs):
         model.train()
@@ -126,7 +135,10 @@ if should_train:
 
             # compute training reconstruction loss
             if model_type == "simple":
-                total_loss = criterion(outputs, flattened_pose_matrix_batch)
+                reconstruction_loss = F.mse_loss(outputs, flattened_pose_matrix_batch, reduction='sum')
+                total_loss = reconstruction_loss
+
+                train_reconstruction_loss += reconstruction_loss.item()
                 train_total_loss += total_loss.item()
             elif model_type == "vae":
                 reconstructed_input, mu, log_var = outputs
@@ -161,26 +173,31 @@ if should_train:
         print(f"epoch : {epoch + 1}/{epochs}")
         train_losses += [[train_total_loss, train_reconstruction_loss, train_kld_loss]]
         test_losses += [[test_total_loss, test_reconstruction_loss, test_kld_loss]]
-        print(f"train total loss = {train_total_loss:.6f}, train reconstruction loss = {train_reconstruction_loss:.6f}, train kld loss = {train_kld_loss:.6f}")
-        print(f"test total loss = {test_total_loss:.6f}, test reconstruction loss = {test_reconstruction_loss:.6f}, test kld loss = {test_kld_loss:.6f}")
+        print(
+            f"train total loss = {train_total_loss:.6f}, train reconstruction loss = {train_reconstruction_loss:.6f}, train kld loss = {train_kld_loss:.6f}")
+        print(
+            f"test total loss = {test_total_loss:.6f}, test reconstruction loss = {test_reconstruction_loss:.6f}, test kld loss = {test_kld_loss:.6f}")
 
-        # plt.plot(train_total_loss, label="train_total_loss")
-        plt.plot(train_reconstruction_loss, label="train_reconstruction_loss")
-        plt.plot(train_kld_loss, label="train_kld_loss")
-
-        # plt.plot(test_total_loss, label="test_total_loss")
-        plt.plot(test_reconstruction_loss, label="test_reconstruction_loss")
-        plt.plot(test_kld_loss, label="test_kld_loss")
+        # plt.plot([x for x, _, _ in train_losses[10:]], label="train_total_loss")
+        # plt.plot([x for x, _, _ in test_losses[10:]], label="test_total_loss")
+        plt.plot([x for _, x, _ in train_losses[10:]], label="train_reconstruction_loss")
+        plt.plot([x for _, x, _ in test_losses[10:]], label="test_reconstruction_loss")
+        plt.plot([x for _, _, x in train_losses[10:]], label="train_kld_loss", linestyle="dashed")
+        plt.plot([x for _, _, x in test_losses[10:]], label="test_kld_loss", linestyle="dashed")
+        plt.title(f"{model_type}, layers {hidden_dimensions}, batch_size {batch_size}")
+        plt.xlabel("epochs")
+        plt.legend(loc='upper left')
         plt.show()
 
-    print("Saving best model...")
-    torch.save(best_model.state_dict(), f"data/best_{model_type}.pt")
+    print("Saving model...")
+    torch.save(model.state_dict(), f"data/best_{model_type}.pt")
 
     print("Saving losses...")
     with open(f"data/best_{model_type}_losses.csv", "w") as file:
-        file.write("train_total_loss, train_reconstruction_loss, train_kld_loss, test_total_loss, test_reconstruction_loss, test_kld_loss\n")
+        file.write(
+            "train_total_loss, train_reconstruction_loss, train_kld_loss, test_total_loss, test_reconstruction_loss, test_kld_loss\n")
         for train_loss, test_loss in zip(train_losses, test_losses):
-            file.write(", ".join(train_loss + test_loss) + "\n")
+            file.write(", ".join([str(x) for x in (train_loss + test_loss)]) + "\n")
 
 
 def evaluate(motion: Motion, steps: List[int]) -> float:
@@ -238,13 +255,13 @@ def latent_interpolate(left: Pose, right: Pose, actual: Pose, progress: float) -
     left_input = torch.tensor(train_dataset.normalize(conversions.T2R(left.to_matrix())).flatten()).to(device)
     right_input = torch.tensor(train_dataset.normalize(conversions.T2R(right.to_matrix())).flatten()).to(device)
 
-    left_latent = best_model.encode(left_input) if model_type == "simple" else best_model.encode(left_input)[0]
-    right_latent = best_model.encode(right_input) if model_type == "simple" else best_model.encode(right_input)[0]
+    left_latent = model.encode(left_input) if model_type == "simple" else model.encode(left_input)[0]
+    right_latent = model.encode(right_input) if model_type == "simple" else model.encode(right_input)[0]
     interpolated_latent_values: List[float] = []
     for i in range(len(left_latent)):
         interpolated_latent_values += [left_latent[i] + (right_latent[i] - left_latent[i]) * progress]
     interpolated_latent = torch.tensor(interpolated_latent_values).to(device)
-    interpolated = best_model.decode(interpolated_latent)
+    interpolated = model.decode(interpolated_latent)
     pose_matrix = conversions.Rp2T(
         train_dataset.unnormalize(interpolated.reshape((-1, 3, 3)).cpu()),
         conversions.T2p(actual.to_matrix())
@@ -277,7 +294,7 @@ def save_viz(dataset):
     )
 
     with torch.no_grad():
-        best_model.eval()
+        model.eval()
         flattened_pose_matrix_batch: torch.Tensor
         for flattened_pose_matrix_batch in loader:
             # we get a batch of 4x4 transform matrix for each joint
@@ -286,10 +303,10 @@ def save_viz(dataset):
 
             output = None
             if model_type == "simple":
-                output = best_model(flattened_pose_matrix_batch)
+                output = model(flattened_pose_matrix_batch)
             elif model_type == "vae":
-                mu, log_var = best_model.encode(flattened_pose_matrix_batch)
-                reconstructed_input = best_model.decode(mu)
+                mu, log_var = model.encode(flattened_pose_matrix_batch)
+                reconstructed_input = model.decode(mu)
                 output = reconstructed_input
             else:
                 raise Exception("Unknown model type")
@@ -317,7 +334,7 @@ for path in motion_data.train_motion_paths()[:2]:
 
 should_evaluate = True
 if should_evaluate:
-    best_model.eval()
+    model.eval()
     with torch.no_grad():
         motion = motion_data.load(motion_data.test_motion_paths()[0])
         loss = evaluate(motion, [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])  # [1, 2, 4, 8, 16])

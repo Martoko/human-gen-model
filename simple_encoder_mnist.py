@@ -25,7 +25,7 @@ test_dataset = torchvision.datasets.MNIST(
 
 print("Setting up train loader...")
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=1024, shuffle=True, num_workers=4, pin_memory=True
+    train_dataset, batch_size=128, shuffle=True, num_workers=4, pin_memory=True
 )
 
 print("Setting up test loader...")
@@ -71,7 +71,7 @@ def visualize(epoch_name):
 
 
 print("Setting up model...")
-hidden_dimensions = [1024, 512]
+hidden_dimensions = [400, 20]
 model = None
 model_type = "vae"
 if model_type == "simple":
@@ -89,7 +89,7 @@ criterion = nn.MSELoss(reduction='sum')
 
 print("Starting training...")
 saved_model_visualization = True
-epochs = 10
+epochs = 100
 for epoch in range(epochs):
     train_loss = 0
     for batch_features, _ in train_loader:
@@ -113,7 +113,7 @@ for epoch in range(epochs):
             loss = criterion(outputs, batch_features)
         elif model_type == "vae":
             reconstructed_input, mu, log_var = outputs
-            #reconstruction_loss = F.mse_loss(reconstructed_input, batch_features)
+            # reconstruction_loss = F.mse_loss(reconstructed_input, batch_features)
             # reconstruction_loss = F.binary_cross_entropy(reconstructed_input, batch_features.view(-1, 784), reduction='sum')
             reconstruction_loss = F.mse_loss(reconstructed_input, batch_features, reduction='sum')
             # kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
