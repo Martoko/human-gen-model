@@ -69,17 +69,3 @@ class VanillaVAE(nn.Module):
         encoded = self.sample(mu, log_var)
         decoded = self.decode(encoded)
         return [decoded, mu, log_var]
-
-    # TODO: Double check this fella
-    def loss_function(self, recons, input, mu, log_var, kld_weight) -> dict:
-        """
-        Computes the VAE loss function.
-        KL(N(\mu, \sigma), N(0, 1)) = \log \frac{1}{\sigma} + \frac{\sigma^2 + \mu^2}{2} - \frac{1}{2}
-        """
-        reconstruction_loss = F.mse_loss(recons, input)
-
-        # KLD loss = KL divergences
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
-
-        loss = reconstruction_loss + kld_weight * kld_loss
-        return {'loss': loss, 'reconstruction_loss': reconstruction_loss, 'kld': -kld_loss}

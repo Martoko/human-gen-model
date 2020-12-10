@@ -6,29 +6,31 @@ import matplotlib.pyplot as plt
 from torchviz import make_dot
 
 from simple_encoder import SimpleAutoEncoder
+from vae_encoder import VanillaVAE
+import torch.nn.functional as F
 
-device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
 print("Setting up train dataset...")
-train_dataset = torchvision.datasets.FashionMNIST(
+train_dataset = torchvision.datasets.MNIST(
     root="~/torch_datasets", train=True, transform=transform, download=True
 )
 
 print("Setting up test dataset...")
-test_dataset = torchvision.datasets.FashionMNIST(
+test_dataset = torchvision.datasets.MNIST(
     root="~/torch_datasets", train=False, transform=transform, download=True
 )
 
 print("Setting up train loader...")
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=8, shuffle=True, num_workers=4, pin_memory=True
+    train_dataset, batch_size=1024, shuffle=True, num_workers=4, pin_memory=True
 )
 
 print("Setting up test loader...")
 test_loader = torch.utils.data.DataLoader(
-    test_dataset, batch_size=32, num_workers=4
+    test_dataset, batch_size=1024, num_workers=4
 )
 
 images = [[] for i in range(10)]
@@ -41,7 +43,15 @@ def visualize(epoch_name):
 
         for i, inp in enumerate(truths):
             flat_input = inp.view(-1, 784).to(device)
-            flat_output = model(flat_input).cpu()
+            flat_output = None
+            if model_type == "simple":
+                flat_output = model(flat_input).cpu()
+            elif model_type == "vae":
+                # flat_output = model(flat_input)[0].cpu()
+                mu, log_var = model.encode(flat_input)
+                flat_output = model.decode(mu).cpu()
+            else:
+                raise Exception("Unknown model type")
             output = flat_output.view(28, 28)
             images[i] += [[output, str(epoch_name)]]
 
@@ -61,17 +71,27 @@ def visualize(epoch_name):
 
 
 print("Setting up model...")
-model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=[512, 256]).to(device)
+hidden_dimensions = [1024, 512]
+model = None
+model_type = "vae"
+if model_type == "simple":
+    print("Setting up simple model...")
+    model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=hidden_dimensions).to(device)
+elif model_type == "vae":
+    print("Setting up VAE model...")
+    model = VanillaVAE(input_size=28 * 28, hidden_dimensions=hidden_dimensions).to(device)
+else:
+    raise Exception("Unknown model type")
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.MSELoss()
+criterion = nn.MSELoss(reduction='sum')
 
 # TODO: save best model
 
 print("Starting training...")
-saved_model_visualization = False
+saved_model_visualization = True
 epochs = 10
 for epoch in range(epochs):
-    loss = 0
+    train_loss = 0
     for batch_features, _ in train_loader:
         # reshape mini-batch data to [N, 784] matrix
         # load it to the active device
@@ -89,24 +109,37 @@ for epoch in range(epochs):
             saved_model_visualization = True
 
         # compute training reconstruction loss
-        train_loss = criterion(outputs, batch_features)
+        if model_type == "simple":
+            loss = criterion(outputs, batch_features)
+        elif model_type == "vae":
+            reconstructed_input, mu, log_var = outputs
+            #reconstruction_loss = F.mse_loss(reconstructed_input, batch_features)
+            # reconstruction_loss = F.binary_cross_entropy(reconstructed_input, batch_features.view(-1, 784), reduction='sum')
+            reconstruction_loss = F.mse_loss(reconstructed_input, batch_features, reduction='sum')
+            # kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
+            # kld_loss = -0.5 * torch.mean(torch.sum(1 + log_var - mu ** 2 - log_var.exp()))
+            kld_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+            # train_loss = reconstruction_loss + kld_loss * ((epoch / epochs) * 1e-5)
+            loss = reconstruction_loss + kld_loss
+        else:
+            raise Exception("Unknown model type")
 
         # compute accumulated gradients
-        train_loss.backward()
+        loss.backward()
 
         # perform parameter update based on current gradients
         optimizer.step()
 
         # add the mini-batch training loss to epoch loss
-        loss += train_loss.item()
+        train_loss += loss.item()
 
     # compute the epoch training loss
-    loss = loss / len(train_loader)
+    train_loss = train_loss / len(train_loader.dataset)
 
     # TODO: test loss/train loss graph
     # display the epoch training loss
-    print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
+    print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, train_loss))
     if epoch % (epochs / 10) == 0:
         visualize(epoch + 1)
-if(epochs > 10 and epochs % 10 > 0):
+if (epochs > 10 and epochs % 10 > 0):
     visualize(epochs)

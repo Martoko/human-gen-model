@@ -18,14 +18,15 @@ from fairmotion.utils import utils as fairmotion_utils, conversions
 from human_body_prior.body_model.body_model import BodyModel
 from torch.utils.data import DataLoader
 from torchviz import make_dot
+import torch.nn.functional as F
 
 import motion_data
 from motion_dataset import MotionDataset
 from simple_encoder import SimpleAutoEncoder
 from vae_encoder import VanillaVAE
 
-device = "cpu"  # torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 32
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+batch_size = 1024
 
 print("Setting up train dataset...")
 train_dataset = MotionDataset(motion_data.load_train())
@@ -41,9 +42,8 @@ test_dataset = MotionDataset(
 print("Setting up test loader...")
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
-# hidden_dimensions=[256, 512, 1024, 2048, 1024, 512, 256, 128, 64]
-hidden_dimensions = [256, 512, 1024, 512, 256, 128]
-# hidden_dimensions = [256]
+# hidden_dimensions = [256, 128]
+hidden_dimensions = [1024, 64]
 
 model = None
 model_type = "vae"
@@ -70,7 +70,8 @@ criterion = nn.MSELoss()
 def test_eval():
     model.eval()
     with torch.no_grad():
-        loss = 0
+        kld_loss = 0
+        reconstruction_loss = 0
         flattened_pose_matrix_batch: torch.Tensor
         for flattened_pose_matrix_batch in test_loader:
             flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
@@ -80,25 +81,30 @@ def test_eval():
             elif model_type == "vae":
                 mu, log_var = model.encode(flattened_pose_matrix_batch)
                 reconstructed_input = model.decode(mu)
-                losses = model.loss_function(
-                    reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
-                    kld_weight=batch_size / len(train_dataset)
-                )
-                loss += losses["loss"]
+                reconstruction_loss += F.mse_loss(reconstructed_input, flattened_pose_matrix_batch, reduction='sum')
+                kld_loss += -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
                 raise Exception("Unknown model type")
 
-        return loss / len(test_loader)
+        return [
+            (reconstruction_loss + kld_loss) / len(test_loader.dataset),
+            reconstruction_loss / len(test_loader.dataset),
+            kld_loss / len(test_loader.dataset)
+        ]
 
 
-should_train = False
+should_train = True
 if should_train:
     saved_model_visualization = False
     print("Starting training...")
-    epochs = 20
+    train_losses = []
+    test_losses = []
+    epochs = 100
     for epoch in range(epochs):
         model.train()
-        loss = 0
+        train_total_loss = 0
+        train_reconstruction_loss = 0
+        train_kld_loss = 0
         flattened_pose_matrix_batch: torch.Tensor
         for flattened_pose_matrix_batch in train_loader:
             # reshape mini-batch data to [N, 784] matrix
@@ -120,39 +126,61 @@ if should_train:
 
             # compute training reconstruction loss
             if model_type == "simple":
-                train_loss = criterion(outputs, flattened_pose_matrix_batch)
+                total_loss = criterion(outputs, flattened_pose_matrix_batch)
+                train_total_loss += total_loss.item()
             elif model_type == "vae":
                 reconstructed_input, mu, log_var = outputs
-                train_loss = model.loss_function(
-                    reconstructed_input, flattened_pose_matrix_batch, mu, log_var,
-                    kld_weight=batch_size / len(train_dataset)
-                )["loss"]
+                reconstruction_loss = F.mse_loss(reconstructed_input, flattened_pose_matrix_batch, reduction='sum')
+                kld_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+                total_loss = reconstruction_loss + kld_loss
+
+                train_reconstruction_loss += reconstruction_loss.item()
+                train_kld_loss += kld_loss.item()
+                train_total_loss += total_loss.item()
             else:
                 raise Exception("Unknown model type")
 
             # compute accumulated gradients
-            train_loss.backward()
+            total_loss.backward()
 
             # perform parameter update based on current gradients
             optimizer.step()
 
-            # add the mini-batch training loss to epoch loss
-            loss += train_loss.item()
-
         # compute the epoch training loss
-        loss = loss / len(train_loader)
+        train_total_loss = train_total_loss / len(train_loader.dataset)
+        train_reconstruction_loss = train_reconstruction_loss / len(train_loader.dataset)
+        train_kld_loss = train_kld_loss / len(train_loader.dataset)
 
         # display the epoch training loss
-        test_loss = test_eval()
+        test_total_loss, test_reconstruction_loss, test_kld_loss = test_eval()
 
-        if test_loss < best_test_loss:
-            best_test_loss = test_loss
+        if test_total_loss < best_test_loss:
+            best_test_loss = test_total_loss
             best_model = model
 
-        print("epoch : {}/{}, train loss = {:.6f}, test loss = {:.6f}".format(epoch + 1, epochs, loss, test_loss))
+        print(f"epoch : {epoch + 1}/{epochs}")
+        train_losses += [[train_total_loss, train_reconstruction_loss, train_kld_loss]]
+        test_losses += [[test_total_loss, test_reconstruction_loss, test_kld_loss]]
+        print(f"train total loss = {train_total_loss:.6f}, train reconstruction loss = {train_reconstruction_loss:.6f}, train kld loss = {train_kld_loss:.6f}")
+        print(f"test total loss = {test_total_loss:.6f}, test reconstruction loss = {test_reconstruction_loss:.6f}, test kld loss = {test_kld_loss:.6f}")
+
+        # plt.plot(train_total_loss, label="train_total_loss")
+        plt.plot(train_reconstruction_loss, label="train_reconstruction_loss")
+        plt.plot(train_kld_loss, label="train_kld_loss")
+
+        # plt.plot(test_total_loss, label="test_total_loss")
+        plt.plot(test_reconstruction_loss, label="test_reconstruction_loss")
+        plt.plot(test_kld_loss, label="test_kld_loss")
+        plt.show()
 
     print("Saving best model...")
     torch.save(best_model.state_dict(), f"data/best_{model_type}.pt")
+
+    print("Saving losses...")
+    with open(f"data/best_{model_type}_losses.csv", "w") as file:
+        file.write("train_total_loss, train_reconstruction_loss, train_kld_loss, test_total_loss, test_reconstruction_loss, test_kld_loss\n")
+        for train_loss, test_loss in zip(train_losses, test_losses):
+            file.write(", ".join(train_loss + test_loss) + "\n")
 
 
 def evaluate(motion: Motion, steps: List[int]) -> float:
@@ -207,15 +235,15 @@ def mse_loss(original_motion: Motion, inpainted_motion: Motion) -> float:
 
 
 def latent_interpolate(left: Pose, right: Pose, actual: Pose, progress: float) -> Pose:
-    left_input = torch.tensor(train_dataset.normalize(conversions.T2R(left.to_matrix())).flatten())
-    right_input = torch.tensor(train_dataset.normalize(conversions.T2R(right.to_matrix())).flatten())
+    left_input = torch.tensor(train_dataset.normalize(conversions.T2R(left.to_matrix())).flatten()).to(device)
+    right_input = torch.tensor(train_dataset.normalize(conversions.T2R(right.to_matrix())).flatten()).to(device)
 
     left_latent = best_model.encode(left_input) if model_type == "simple" else best_model.encode(left_input)[0]
     right_latent = best_model.encode(right_input) if model_type == "simple" else best_model.encode(right_input)[0]
     interpolated_latent_values: List[float] = []
     for i in range(len(left_latent)):
         interpolated_latent_values += [left_latent[i] + (right_latent[i] - left_latent[i]) * progress]
-    interpolated_latent = torch.tensor(interpolated_latent_values)
+    interpolated_latent = torch.tensor(interpolated_latent_values).to(device)
     interpolated = best_model.decode(interpolated_latent)
     pose_matrix = conversions.Rp2T(
         train_dataset.unnormalize(interpolated.reshape((-1, 3, 3)).cpu()),
@@ -234,7 +262,7 @@ def linear_interpolate(left: Pose, right: Pose, actual: Pose, progress: float) -
 
 
 def save_viz(dataset):
-    loader = DataLoader(dataset, batch_size=32, num_workers=4)
+    loader = DataLoader(dataset, batch_size=128, num_workers=4)
     print(f"Saving {dataset.motion.name[0:246]}")
     # Visualize results on untrained data
     original_motion = Motion(
@@ -254,11 +282,11 @@ def save_viz(dataset):
         for flattened_pose_matrix_batch in loader:
             # we get a batch of 4x4 transform matrix for each joint
 
-            input = flattened_pose_matrix_batch.to(device)
+            flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
 
             output = None
             if model_type == "simple":
-                output = best_model(input)
+                output = best_model(flattened_pose_matrix_batch)
             elif model_type == "vae":
                 mu, log_var = best_model.encode(flattened_pose_matrix_batch)
                 reconstructed_input = best_model.decode(mu)
@@ -282,14 +310,14 @@ def save_viz(dataset):
     motion_data.save(autoencoded_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.auto.bvh")
 
 
+for path in motion_data.test_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
+for path in motion_data.train_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
+
 should_evaluate = True
 if should_evaluate:
     best_model.eval()
     with torch.no_grad():
         motion = motion_data.load(motion_data.test_motion_paths()[0])
-        loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])  # [1, 2, 4, 8, 16])
-
-for path in motion_data.test_motion_paths()[:2]:
-    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
-for path in motion_data.train_motion_paths()[:2]:
-    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
+        loss = evaluate(motion, [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])  # [1, 2, 4, 8, 16])
