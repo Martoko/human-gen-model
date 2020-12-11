@@ -26,7 +26,7 @@ from simple_encoder import SimpleAutoEncoder
 from vae_encoder import VanillaVAE
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 1024
+batch_size = 8
 
 print("Setting up train dataset...")
 train_dataset = MotionDataset(motion_data.load_train())
@@ -43,27 +43,29 @@ print("Setting up test loader...")
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
 # hidden_dimensions = [256, 128]
-hidden_dimensions = [1024, 64]
+hidden_dimensions = [1024, 1024, 16]
 
 model = None
 model_type = "vae"
+model_save_path = f"data/{model_type}_{'-'.join([str(x) for x in hidden_dimensions])}_batch-{batch_size}.pt"
+losses_save_path = f"data/{model_type}_{'-'.join([str(x) for x in hidden_dimensions])}_batch-{batch_size}_losses.csv"
 if model_type == "simple":
     print("Setting up simple model...")
     model = SimpleAutoEncoder(input_size=198, hidden_dimensions=hidden_dimensions).double().to(device)
-    if os.path.exists(f"data/best_{model_type}.pt"):
+    if os.path.exists(model_save_path):
         print("Loading saved best simple model...")
-        model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
+        model.load_state_dict(torch.load(model_save_path))
 elif model_type == "vae":
     print("Setting up VAE model...")
     model = VanillaVAE(input_size=198, hidden_dimensions=hidden_dimensions).double().to(device)
-    if os.path.exists(f"data/best_{model_type}.pt"):
+    if os.path.exists(model_save_path):
         print("Loading saved best VAE model...")
-        model.load_state_dict(torch.load(f"data/best_{model_type}.pt"))
+        model.load_state_dict(torch.load(model_save_path))
 else:
     raise Exception("Unknown model type")
 best_test_loss = -inf
 best_model = model
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=1e-5)
 
 
 def test_eval():
@@ -76,8 +78,7 @@ def test_eval():
             flattened_pose_matrix_batch = flattened_pose_matrix_batch.to(device)
             if model_type == "simple":
                 outputs = model(flattened_pose_matrix_batch)
-                reconstruction_loss += F.mse_loss(reconstructed_input, flattened_pose_matrix_batch,
-                                                  reduction='sum').item()
+                reconstruction_loss += F.mse_loss(outputs, flattened_pose_matrix_batch, reduction='sum').item()
             elif model_type == "vae":
                 mu, log_var = model.encode(flattened_pose_matrix_batch)
                 reconstructed_input = model.decode(mu)
@@ -100,9 +101,9 @@ if should_train:
 
     train_losses = []
     test_losses = []
-    if os.path.exists(f"data/best_{model_type}_losses.csv"):
+    if os.path.exists(losses_save_path):
         print("Loading losses...")
-        with open(f"data/best_{model_type}_losses.csv", "r") as file:
+        with open(losses_save_path, "r") as file:
             for line in file.readlines()[1:]:
                 train_losses += [[float(string) for string in line.split(",")][:3]]
                 test_losses += [[float(string) for string in line.split(",")][3:]]
@@ -178,22 +179,22 @@ if should_train:
         print(
             f"test total loss = {test_total_loss:.6f}, test reconstruction loss = {test_reconstruction_loss:.6f}, test kld loss = {test_kld_loss:.6f}")
 
-        # plt.plot([x for x, _, _ in train_losses[10:]], label="train_total_loss")
-        # plt.plot([x for x, _, _ in test_losses[10:]], label="test_total_loss")
-        plt.plot([x for _, x, _ in train_losses[10:]], label="train_reconstruction_loss")
-        plt.plot([x for _, x, _ in test_losses[10:]], label="test_reconstruction_loss")
-        plt.plot([x for _, _, x in train_losses[10:]], label="train_kld_loss", linestyle="dashed")
-        plt.plot([x for _, _, x in test_losses[10:]], label="test_kld_loss", linestyle="dashed")
+        # plt.plot([x for x, _, _ in train_losses[-20:]], label="train_total_loss")
+        # plt.plot([x for x, _, _ in test_losses[-20:]], label="test_total_loss")
+        plt.plot([x for _, x, _ in train_losses[-20:]], label="train_reconstruction_loss")
+        # plt.plot([x for _, x, _ in test_losses[-20:]], label="test_reconstruction_loss")
+        # plt.plot([x for _, _, x in train_losses[-20:]], label="train_kld_loss", linestyle="dashed")
+        # plt.plot([x for _, _, x in test_losses[-20:]], label="test_kld_loss", linestyle="dashed")
         plt.title(f"{model_type}, layers {hidden_dimensions}, batch_size {batch_size}")
         plt.xlabel("epochs")
         plt.legend(loc='upper left')
         plt.show()
 
     print("Saving model...")
-    torch.save(model.state_dict(), f"data/best_{model_type}.pt")
+    torch.save(model.state_dict(), model_save_path)
 
     print("Saving losses...")
-    with open(f"data/best_{model_type}_losses.csv", "w") as file:
+    with open(losses_save_path, "w") as file:
         file.write(
             "train_total_loss, train_reconstruction_loss, train_kld_loss, test_total_loss, test_reconstruction_loss, test_kld_loss\n")
         for train_loss, test_loss in zip(train_losses, test_losses):
@@ -327,14 +328,17 @@ def save_viz(dataset):
     motion_data.save(autoencoded_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.auto.bvh")
 
 
-for path in motion_data.test_motion_paths()[:2]:
-    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
-for path in motion_data.train_motion_paths()[:2]:
-    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
-
 should_evaluate = True
 if should_evaluate:
     model.eval()
     with torch.no_grad():
         motion = motion_data.load(motion_data.test_motion_paths()[0])
-        loss = evaluate(motion, [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])  # [1, 2, 4, 8, 16])
+        loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128])  # [1, 2, 4, 8, 16])
+
+        motion = motion_data.load(motion_data.train_motion_paths()[0])
+        loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128])  # [1, 2, 4, 8, 16])
+
+for path in motion_data.test_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))
+for path in motion_data.train_motion_paths()[:2]:
+    save_viz(MotionDataset(motion_data.load(path), std=train_dataset.std, mean=train_dataset.mean))

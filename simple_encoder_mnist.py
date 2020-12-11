@@ -71,7 +71,7 @@ def visualize(epoch_name):
 
 
 print("Setting up model...")
-hidden_dimensions = [400, 20]
+hidden_dimensions = [400, 16]
 model = None
 model_type = "vae"
 if model_type == "simple":
@@ -82,7 +82,7 @@ elif model_type == "vae":
     model = VanillaVAE(input_size=28 * 28, hidden_dimensions=hidden_dimensions).to(device)
 else:
     raise Exception("Unknown model type")
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
 criterion = nn.MSELoss(reduction='sum')
 
 # TODO: save best model

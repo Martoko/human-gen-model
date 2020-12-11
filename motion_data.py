@@ -158,7 +158,7 @@ WALKING_LIKE_MOTIONS_INFO = [
 ]
 
 WALKING_LIKE_MOTIONS_PATH = [f"data/motions/CMU/{subject:02d}/{subject:02d}_{trial:02d}_poses.npz" for
-                             subject, trial, tags in WALKING_LIKE_MOTIONS_INFO]
+                             subject, trial, tags in WALKING_LIKE_MOTIONS_INFO if tags == ["walk"]]
 for path in WALKING_LIKE_MOTIONS_PATH:
     if not os.path.exists(path):
         print(f"WARNING: Cannot find motion at {path}")
