@@ -25,7 +25,8 @@ from motion_dataset import MotionDataset
 from simple_encoder import SimpleAutoEncoder
 from vae_encoder import VanillaVAE
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability() != (3, 0) and
+                                torch.cuda.get_device_capability()[0] >= 3 else "cpu")
 batch_size = 8
 
 print("Setting up train dataset...")

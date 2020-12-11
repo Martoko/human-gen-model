@@ -9,7 +9,8 @@ from simple_encoder import SimpleAutoEncoder
 from vae_encoder import VanillaVAE
 import torch.nn.functional as F
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability() != (3, 0) and
+                                torch.cuda.get_device_capability()[0] >= 3 else "cpu")
 
 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
@@ -71,9 +72,9 @@ def visualize(epoch_name):
 
 
 print("Setting up model...")
-hidden_dimensions = [400, 16]
+hidden_dimensions = [512, 256, 128, 64, 32, 16]
 model = None
-model_type = "vae"
+model_type = "simple"
 if model_type == "simple":
     print("Setting up simple model...")
     model = SimpleAutoEncoder(input_size=28 * 28, hidden_dimensions=hidden_dimensions).to(device)
