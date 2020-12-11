@@ -9,7 +9,7 @@ The autoencoder has been trained to encode a pose. The training then optimizes t
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.5\textwidth]{img/simple_1024-64_batch-128_losses}
-\caption{Loss over epochs for the autoencoder. The reconstruction\_loss is the MSE loss and the kld\_loss is not applicable for this model.}
+\caption{Loss over epochs for the autoencoder. The reconstruction\_loss is the MSE loss, the kld\_loss is not applicable for this model.}
 \label{fig:ae-loss}
 \end{figure}
 
@@ -19,6 +19,29 @@ The autoencoder has been trained to encode a pose. The training then optimizes t
 \caption{Subject 46, trial 1 from the CMU dataset. The motion depicts turning around, as opposed to simply walking straight ahead.}
 \label{fig:test-turning}
 \end{figure}
+
+
+
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Step & Latent loss & Linear loss & Difference \\ \midrule
+1    & 0.000000    & 0.000000    & 0.000000   \\
+2    & 0.000004    & 0.000002    & -0.000002  \\
+4    & 0.000008    & 0.000006    & -0.000002  \\
+8    & 0.000029    & 0.000027    & -0.000002  \\
+16   & 0.000142    & 0.000136    & -0.000006  \\
+32   & 0.001255    & 0.001255    & 0.000000   \\
+64   & 0.003744    & 0.003736    & -0.000008  \\
+128  & 0.011174    & 0.011202    & 0.000028   \\ \bottomrule
+\end{tabular}
+\caption{Caption here}
+\label{tab:ae-eval}
+\end{table}
+
 % TODO: Examples below, both whole anim and inpaint
 
 
