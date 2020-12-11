@@ -3,6 +3,14 @@ Training a model for human motion analysis requires a great deal of human motion
 
 Only a subset of the AMASS data set was used. This sped up training by training on less data and it meant not having to stream in training data, as the subset used was small enough to fit into memory.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{img/02_01}
+\caption{Small snippet of a walking motion from the AMASS dataset.}
+\label{fig:walking}
+\end{figure}
+
+
 \subsection{Models}\label{subsec:models}
 An autoencoder consists of an encoder and a decoder. The encoder works by taking an input and then encoding it into a smaller space called the latent space. The encoder then decodes the latent value back into something similar to the original input value. Such an operation by itself is pointless, but by doing this we are forcing the model to learn which features of the input are necessary for faithful reconstruction and which features can be discarded. This essentially gives us a compressed version of the input, where each change in the latent space is likely to be clearly visible in the output, similar to principal components analysis~\cite{TODO}.An autoencoder consists of an encoder and a decoder. The encoder works by taking an input and then encoding it into a smaller space called the latent space. The encoder then decodes the latent value back into something similar to the original input value. Such an operation by itself is pointless, but by doing this we are forcing the model to learn which features of the input are necessary for faithful reconstruction and which features can be discarded. This essentially gives us a compressed version of the input, where each change in the latent space is likely to be clearly visible in the output, similar to principal components analysis~\cite{TODO}.
 
