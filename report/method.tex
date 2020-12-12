@@ -1,14 +1,20 @@
-\subsection{Data}\label{subsec:data}
-Training a model for human motion analysis requires a great deal of human motion data. There exists two efforts to help in this regard. First of the AMASS data set is an attempt to amass a large quantity of human motion data from motion capture \cite{AMASS:2019}. Secondly the fairmotion library is a library that allows you to take motion from all of the heterogeneous formats currently available, including the AMASS data set, and access all of it through one homogenous interface \cite{gopinath2020fairmotion}. The fairmotion library requires both motion data and skeleton/model data of a human. As such, AMASS was used for the motion data and \cite{MANO:2017} for the skeleton/model data.
+Using pytorch \cite{pytorch} several models are constructed, trained and evaluated.
 
-Only a subset of the AMASS data set was used. This sped up training by training on less data and it meant not having to stream in training data, as the subset used was small enough to fit into memory.
+\subsection{Data}\label{subsec:data}
+Archive of Motion Capture as Surface Shapes (AMASS) \cite{AMASS:2019} is a collection of motion capture datasets. An example of a motion capture visualization can be seen in \autoref{fig:walking}. AMASS collects several datasets into one single place and unifies the data format to a single data format. All models will be trained on data AMASS. Specifically all data from the CMU \cite{cmuWEB} dataset (part of AMASS) that has been tagged with the \texttt{walk} tag. Motion is usually stored as rotations around joints, as human limbs generally speaking only rotate and do not stretch. This means that most motions consist only of rotations and a root position. Only the rotational data is used in order to simplify the different types of data the models are trained on. Some visualizations in this paper include root position, when that is the case the root position is always the reference root position.
+
+In order to visualize motion a skeleton is needed. A skeleton is mostly just where the joints are positioned relative to each other and a mesh. For this the skeleton from \cite{MANO} is used. This paper only visualizes the joints, the mesh is never used in visualization.
+
+In order to load in the motion data the library fairmotion \cite{gopinath2020fairmotion} is used. It provides an easy way to load and manipulate motion data and is also the tool used for visualization.
+
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.5\textwidth]{img/02_01}
+\includegraphics[width=0.3\textwidth]{img/02_01}
 \caption{Small snippet of a walking motion from the AMASS dataset.}
 \label{fig:walking}
 \end{figure}
+
 
 
 \subsection{Models}\label{subsec:models}

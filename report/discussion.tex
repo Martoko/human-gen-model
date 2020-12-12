@@ -44,7 +44,6 @@ In an effort to combat this issue a model was trained with a smaller latent spac
 \label{fig:test-turning}
 \end{figure}
 
-
 \begin{table}[h]
     \begin{subtable}[h]{0.45\textwidth}
         \centering
@@ -81,15 +80,48 @@ In an effort to combat this issue a model was trained with a smaller latent spac
         \caption{Comparison for the model with a small latent space.}
         \label{tab:ae-eval-small}
     \end{subtable}
-     \caption{Comparison of loss using an interpolation in latent space and an interpolation in the motion space on a single motion from the test dataset. Step denotes the distance between the start pose and end pose in frames. TODO: FILL IN VALUES}
+     \caption{Comparison of loss using an interpolation in latent space and an interpolation in the motion space on a single motion from the test dataset. Step denotes the distance between the start pose and end pose in frames.}
      \label{tab:ae-eval}
 \end{table}
+
+\clearpage
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\textwidth]{img/ae-large-motion}
+\caption{Frames from autoencoding a motion using the autoencoder with a large latent space. The green skeleton is the autoencoded poses and the white skeleton is the reference pose. The overlap makes it hard to distinguish the two skeletons from each other.}
+\label{fig:ae-large-motion}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\textwidth]{img/ae-small-motion}
+\caption{Frames from autoencoding a motion using the autoencoder with a small latent space. Frames from autoencoding every pose in a motion. The green skeleton is the autoencoded poses and the white skeleton is the reference pose. The third frame suddenly jumps compared with the other frames.}
+\label{fig:ae-small-motion}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\textwidth]{img/ae-large-inpainting}
+\caption{Frames from inpainting a motion using the autoencoder with a large latent space. The gaps are of length 32. The first frame shows the start pose. The green skeleton is the autoencoded poses, the white skeleton is the reference pose and the blue skeleton is a linear interpolation. Observe how closely the autoencoded poses match the linearly interpolated poses.}
+\label{fig:ae-large-inpainting}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\textwidth]{img/ae-small-inpainting}
+\caption{Frames from inpainting a motion using the autoencoder with a small latent space. The gaps are of length 32. The first frame shows the start pose. The green skeleton is the autoencoded poses, the white skeleton is the reference pose and the blue skeleton is a linear interpolation. Observe how the autoencoded poses exhibit diverge from both the reference poses and the linearly interpolated poses.}
+\label{fig:ae-small-inpainting}
+\end{figure}
+
+\newpage
+
 
 
 
 
 \subsubsection{Variational autoencoder}\label{subsubsec:vae}
-A VAE is trained using a small latent space in order to avoid the issues around large latent spaces described in \autoref{subsubsec:ae}. It achieves a similar accuracy and has the same gap between test and train loss as the autoencoder with a small latent space, as can be seen in \autoref{fig:vae-loss}.
+A VAE is trained using a small latent space in order to avoid the issues around large latent spaces described in \ref{subsubsec:ae}. It achieves a similar accuracy and has the same gap between test and train loss as the autoencoder with a small latent space, as can be seen in \autoref{fig:vae-loss}.
 
 Comparing \autoref{fig:vae-motion} and \autoref{fig:ae-small-motion} it becomes clear that the variational encoder is capable of blending between latents space without jitter, showing the difference between a regular autoencoder and a VAE.
 
@@ -100,6 +132,20 @@ Comparing \autoref{fig:vae-motion} and \autoref{fig:ae-small-motion} it becomes 
 \includegraphics[width=0.5\textwidth]{img/vae_256-256-256-256-8_batch-8_losses}
 \caption{MSE loss of autoencoding a pose and KLD loss for both the training and test datasets.}
 \label{fig:vae-loss}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{img/vae-motion}
+\caption{TODO}
+\label{fig:vae-motion}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{img/vae-inpainting}
+\caption{TODO}
+\label{fig:vae-inpainting}
 \end{figure}
 
 \begin{table}[h]
