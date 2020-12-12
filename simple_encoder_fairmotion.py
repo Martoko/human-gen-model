@@ -44,7 +44,7 @@ print("Setting up test loader...")
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
 # hidden_dimensions = [256, 128]
-hidden_dimensions = [1024, 1024, 16]
+hidden_dimensions = [256, 256, 256, 256, 8]
 
 model = None
 model_type = "vae"
@@ -182,7 +182,7 @@ if should_train:
 
         # plt.plot([x for x, _, _ in train_losses[-20:]], label="train_total_loss")
         # plt.plot([x for x, _, _ in test_losses[-20:]], label="test_total_loss")
-        plt.plot([x for _, x, _ in train_losses[-20:]], label="train_reconstruction_loss")
+        plt.plot([x for _, x, _ in train_losses[-100:]], label="train_reconstruction_loss")
         # plt.plot([x for _, x, _ in test_losses[-20:]], label="test_reconstruction_loss")
         # plt.plot([x for _, _, x in train_losses[-20:]], label="train_kld_loss", linestyle="dashed")
         # plt.plot([x for _, _, x in test_losses[-20:]], label="test_kld_loss", linestyle="dashed")
