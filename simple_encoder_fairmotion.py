@@ -27,7 +27,21 @@ from vae_encoder import VanillaVAE
 
 device = torch.device("cuda" if torch.cuda.is_available() and torch.cuda.get_device_capability() != (3, 0) and
                                 torch.cuda.get_device_capability()[0] >= 3 else "cpu")
-batch_size = 8
+
+model_type = "simple"
+hidden_dimensions = [1024, 64]
+batch_size = 128
+
+# model_type = "simple"
+# hidden_dimensions = [256, 256, 256, 256, 4]
+# batch_size = 8
+#
+# model_type = "vae"
+# hidden_dimensions = [256, 256, 256, 256, 8]
+# batch_size = 8
+
+should_train = False
+should_evaluate = True
 
 print("Setting up train dataset...")
 train_dataset = MotionDataset(motion_data.load_train())
@@ -43,11 +57,7 @@ test_dataset = MotionDataset(
 print("Setting up test loader...")
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4)
 
-# hidden_dimensions = [256, 128]
-hidden_dimensions = [256, 256, 256, 256, 8]
-
 model = None
-model_type = "vae"
 model_save_path = f"data/{model_type}_{'-'.join([str(x) for x in hidden_dimensions])}_batch-{batch_size}.pt"
 losses_save_path = f"data/{model_type}_{'-'.join([str(x) for x in hidden_dimensions])}_batch-{batch_size}_losses.csv"
 if model_type == "simple":
@@ -96,7 +106,6 @@ def test_eval():
         ]
 
 
-should_train = True
 if should_train:
     saved_model_visualization = False
 
@@ -329,13 +338,14 @@ def save_viz(dataset):
     motion_data.save(autoencoded_motion, f"data/generated/{model_type}/{autoencoded_motion.name}.auto.bvh")
 
 
-should_evaluate = True
 if should_evaluate:
     model.eval()
     with torch.no_grad():
+        print("TEST")
         motion = motion_data.load(motion_data.test_motion_paths()[0])
         loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128])  # [1, 2, 4, 8, 16])
 
+        print("TRAIN")
         motion = motion_data.load(motion_data.train_motion_paths()[0])
         loss = evaluate(motion, [1, 2, 4, 8, 16, 32, 64, 128])  # [1, 2, 4, 8, 16])
 
