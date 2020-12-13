@@ -10,9 +10,9 @@ Performing in-painting on a motion, gives a visual indication as well as a numer
 \subsubsection{Autoencoder}\label{subsubsec:ae}
 Two models are trained. One model has a small latent space (8 dimensions), while the other has a large latent space (128 dimensions).
 
-The model with a large latent space becomes very good at autoencoding poses, as can be seen by the loss in \autoref{fig:ae-loss-large}. This is also evident in the very smooth autoencoded motion seen in \autoref{fig:ae-large-motion}. \autoref{fig-large-inpainting} shows a visualization of the motion inpainting, which reveals a problem with the large latent space. The model seems to encode rotations in a way that is so similar to the original rotations that the interpolation in latent space is almost identical to the interpolation in the motion space. This can also be seen in the comparison in \autoref{tab:ae-eval-large}.
+The model with a large latent space becomes very good at autoencoding poses, as can be seen by the loss in \autoref{fig:ae-loss-large}. This is also evident in the very smooth autoencoded motion seen in \autoref{fig:ae-large-motion}. \autoref{fig:ae-large-inpainting} shows a visualization of the motion inpainting, which reveals a problem with the large latent space. The model seems to encode rotations in a way that is so similar to the original rotations that the interpolation in latent space is almost identical to the interpolation in the motion space. This can also be seen in the comparison in \autoref{tab:ae-eval-large}.
 
-In an effort to combat this issue a model was trained with a smaller latent space. This model did not achieve as high of an accuracy as the model with the large latent space, but it is sufficient for comparison. Furthermore there is a large gap in accuracy on training vs test data. This can be explained by poses in the test dataset being very far away from the train dataset, \autoref{fig:test-turning} shows an example of such a motion in the test dataset. Having a larger dataset would help alleviate this. \autoref{tab:ae-eval-small} shows a slightly worse performance on in-painting, but this likely a result of the model not being as good at autoencoding poses. \autoref{fig:ae-small-inpainting} and \autoref{fig:ae-small-motion} shows that while the model autoencodes the poses pretty well it lacks the ability to blend smoothly between similar poses, resulting in very jittery motion. This motivates the training of a VAE.
+In an effort to combat this issue a model was trained with a smaller latent space. This model did not achieve as high of an accuracy as the model with the large latent space, but it is sufficient for comparison. Furthermore there is a large gap in accuracy on training vs test data. This can be explained by poses in the test dataset being very far away from the train dataset, \autoref{fig:test-turning} shows an example of such a motion in the test dataset. Having a larger dataset would help alleviate this. \autoref{tab:ae-eval-small} shows a worse performance on in-painting, this likely a result of the model not being as good at autoencoding poses. \autoref{fig:ae-small-inpainting} and \autoref{fig:ae-small-motion} shows that while the model autoencodes the poses pretty well it lacks the ability to blend smoothly between similar poses, resulting in very jittery motion. This motivates the training of a VAE.
 
 
 
@@ -110,11 +110,12 @@ In an effort to combat this issue a model was trained with a smaller latent spac
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.4\textwidth]{img/ae-small-inpainting}
-\caption{Frames from inpainting a motion using the autoencoder with a small latent space. The gaps are of length 32. The first frame shows the start pose. The green skeleton is the autoencoded poses, the white skeleton is the reference pose and the blue skeleton is a linear interpolation. Observe how the autoencoded poses exhibit diverge from both the reference poses and the linearly interpolated poses.}
+\caption{Frames from inpainting a motion using the autoencoder with a small latent space. The gaps are of length 32. The first frame shows the start pose. The green skeleton is the autoencoded poses, the white skeleton is the reference pose and the blue skeleton is a linear interpolation. Observe how the autoencoded poses diverge from both the reference poses and the linearly interpolated poses.}
 \label{fig:ae-small-inpainting}
 \end{figure}
 
 \newpage
+
 
 
 
@@ -137,14 +138,14 @@ Comparing \autoref{fig:vae-motion} and \autoref{fig:ae-small-motion} it becomes 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.5\textwidth]{img/vae-motion}
-\caption{TODO}
+\caption{Frames from autoencoding a motion using the VAE. The green skeleton is the autoencoded poses and the white skeleton is the reference pose. Observe how the errors are mostly offsets and not sudden jumps.}
 \label{fig:vae-motion}
 \end{figure}
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.5\textwidth]{img/vae-inpainting}
-\caption{TODO}
+\caption{Frames from inpainting a motion using the autoencoder with a small latent space. The gaps are of length 32. The first frame shows the start pose. The green skeleton is the autoencoded poses, the white skeleton is the reference pose and the blue skeleton is a linear interpolation. Observe how the autoencoded poses overlap with the reference poses and with the linear interpolated poses.}
 \label{fig:vae-inpainting}
 \end{figure}
 
