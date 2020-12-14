@@ -6,6 +6,7 @@
 \usepackage{listings}
 \usepackage[margin=1.2in]{geometry}
 \usepackage{booktabs}
+\usepackage[T1]{fontenc}
 
 \usepackage{titling}
 \usepackage{lipsum}
@@ -61,11 +62,13 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\softmax}{soft\,max}
 
-\title{%
-    Generative Model of Human Body Motion for Walking\\
-    \large Research Project\\
-    \small KIREPRO1PE
-}
+%\title{%
+%    Generative Model of Human Body Motion for Walking\\
+%    \large Research Project\\
+%    \small KIREPRO1PE
+%}
+
+\title{Generative Model of Human Body Motion for Walking}
 
 \author{%
     Mathias Bastholm\\
@@ -73,10 +76,8 @@
 }
 
 \begin{document}
-\maketitle
-
-\section{Introduction}\label{sec:introduction}
-\input{introduction}
+\include{title}
+\pagebreak
 
 \section{Background}\label{sec:background}
 \input{background}

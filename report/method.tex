@@ -1,4 +1,4 @@
-Using pytorch \cite{pytorch} several models are constructed, trained and evaluated.
+Using pytorch \cite{pytorch} several models are constructed, trained and evaluated. All of the source code is available at \texttt{https://github.com/Martoko/human-gen-model}.
 
 \subsection{Data}\label{subsec:data}
 Archive of Motion Capture as Surface Shapes (AMASS) \cite{AMASS:2019} is a collection of motion capture datasets. A visualization of an example motion can be seen in \autoref{fig:walking}. AMASS collects several datasets into one single place and unifies the data format to a single data format. All models will be trained on data AMASS. Specifically all data from the CMU \cite{cmuWEB} dataset (part of AMASS) that has been tagged with the \texttt{walk} tag. Motion is usually stored as rotations around joints, as human limbs generally speaking only rotate and do not stretch. This means that most motions consist only of rotations and a root position. Only the rotational data is used in order to simplify the different types of data the models are trained on. Some visualizations in this paper include root position, when that is the case the root position used is always the reference root position. All motion data is normalized relative to the training dataset. Since the training dataset is very small this might have a significant impact on the ability to perform on the test dataset, since it is likely that there are poses in the test dataset which are not in the training dataset. See \ref{subsubsec:ae} for more details.
@@ -17,10 +17,11 @@ In order to load in the motion data the library fairmotion \cite{gopinath2020fai
 
 
 
-\subsection{Models}\label{subsec:models}
-An autoencoder consists of an encoder and a decoder. The encoder works by taking an input and then encoding it into a smaller space called the latent space. The encoder then decodes the latent value back into something similar to the original input value. Such an operation by itself does not add any new information, but by doing this we are forcing the model to learn which features of the input are necessary for faithful reconstruction and which features can be discarded. This essentially gives us a compressed version of the input, where each change in the latent space is likely to be clearly visible in the output, similar to principal components analysis~\cite{shlens2014tutorial}.
 
-Let $x$ denote the input, $e$ denote the encoder, $d$ denote the decoder, $z$ denote the latent value and $\hat{x}$ the autoencoded value, see \autoref{fig:autoencoder}. We are then looking to minimize
+\subsection{Models}\label{subsec:models}
+An autoencoder consists of an encoder and a decoder. The encoder works by taking an input and then encoding it into a smaller space called the latent space. The encoder then decodes the latent value back into something similar to the original input value. Such an operation by itself does not add any new information, but by doing this the model is forced to learn which features of the input are necessary for faithful reconstruction and which features can be discarded. This essentially gives us a compressed version of the input, where each change in the latent space is likely to be clearly visible in the output, similar to principal components analysis~\cite{shlens2014tutorial}.
+
+Let $x$ denote the input, $e$ denote the encoder, $d$ denote the decoder, $z$ denote the latent value and $\hat{x}$ the autoencoded value, see \autoref{fig:autoencoder}. The following then needs to be minized
 $$
 \epsilon(x,\hat{x})
 $$
@@ -68,4 +69,8 @@ The VAE model is similar to the autoencoder with a small latent space. It has a 
 
 
 \subsection{Training}\label{subsec:training}
-notes on how the training was performed
+The models were trained using the Adam optimizer \cite{kingma2017adam}.
+
+Lower learning rates generally performed better, but increased the overall training time. As such a learning rate of \num{1e-5} was used for training all models.
+
+A similar observation was made for the batch size, where generally speaking a lower batch size resulted in a lower loss, but after a much longer training time. The autoencoder with a large latent space was trained with batch size 128. The autoencoder with a small latent space and the VAE was trained with a batch size of 8.

@@ -1,3 +1,5 @@
+The models are evaluated on their performance and further research is suggested below.
+
 \subsection{Results}\label{subsec:results}
 The models are evaluated using 3 different methods.
 
@@ -167,16 +169,11 @@ Step & Latent loss & Linear loss & Difference  \\ \midrule
 \label{tab:vae-eval}
 \end{table}
 
-
-
+\newpage
 
 \subsection{Further research}\label{subsec:further-research}
-clustered-specialists-paper~\cite{won2020scalable}
+There are various types of models that build on the VAE, for example the Vector Quantised-Variational AutoEncoder \cite{VQVAE}. Using such a model might allow learning the human motion without overfitting.
 
-something about motion prediction maybe (a way to utilize forwards/backwards info)
+Expanding to motions beyond walking could potentially benefit from clustering the motion, training specialists, and then training a network to choose the correct blend of specialists, similar to what is described in \cite{won2020scalable}.
 
-closer comparison with existing motion prediction models
-
-using vq-vae
-
-using the full amass data training
+This paper only uses a subset of the AMASS dataset. Using more data would likely increase the quality of the model.
